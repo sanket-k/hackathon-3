@@ -1,9 +1,15 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuditResult, LanguageCode, VaultDocument } from '../types/contract';
 import { ALL_PRESETS } from '../data/presets';
 import { ORIGINAL_SCAN_DEMO_URL, PHOTO_CHECK_DEMO_URL } from '../utils/ingest';
 import { calculateWayOutAtMonth } from '../utils/wayOutMath';
 import { playRegionalSpeech, stopAllSpeech } from '../utils/audioSync';
+import {
+  MIN_VOICE_CAPTURE_MS,
+  startVoiceCapture,
+  transcribeAudio,
+  type VoiceCaptureHandle,
+} from '../utils/voiceCapture';
 import { Icon } from './Icons';
 
 export type MobileScreen =
@@ -110,6 +116,15 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
   const [isHoldingMic, setIsHoldingMic] = useState(false);
   const [qaItem, setQaItem] = useState(() => audit.qa_presets[0]);
   const [voiceHistoryCount, setVoiceHistoryCount] = useState(0);
+  // Real Hold-to-Ask capture: idle → requesting (mic opening) → recording → transcribing → answering
+  const [voiceStage, setVoiceStage] = useState<'idle' | 'requesting' | 'recording' | 'transcribing' | 'answering'>(
+    'idle',
+  );
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const voiceHandleRef = useRef<VoiceCaptureHandle | null>(null);
+  const voiceFailedRef = useRef(false);
+  const voicePressActiveRef = useRef(false);
+  const voiceAnswerRef = useRef<HTMLDivElement | null>(null);
 
   // M8 Vault states
   const [vaultFilter, setVaultFilter] = useState<'all' | 'rental' | 'loan' | 'employment'>('all');
@@ -156,9 +171,11 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
     });
   };
 
-  const handleAskMobileQA = async (question: string) => {
+  const handleAskMobileQA = async (
+    question: string,
+  ): Promise<(typeof audit.qa_presets)[number] | null> => {
     const trimmed = question.trim();
-    if (!trimmed) return;
+    if (!trimmed) return null;
     setQaText('');
     setVoiceHistoryCount((c) => c + 1);
     const fullContractText = audit.clauses.map((c) => `${c.section_label}: ${c.text}`).join('\n\n');
@@ -183,7 +200,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
           verbatim_quote?: string;
         };
         if (data.ok && !data.fallback_recommended && data.answer_en) {
-          setQaItem({
+          const nextItem = {
             chip: trimmed,
             question_native: trimmed,
             question_en: trimmed,
@@ -192,8 +209,9 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
             statutory_note: data.statutory_note || audit.rule_pack_applied.display_name,
             clause_id: data.clause_id || audit.clauses[0]?.clause_id || 'clause-4-2',
             excerpt: data.verbatim_quote || audit.clauses[0]?.text || '',
-          });
-          return;
+          };
+          setQaItem(nextItem);
+          return nextItem;
         }
       }
       throw new Error('Fallback to preset QA');
@@ -204,14 +222,139 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
           p.chip.toLowerCase().split(/\s+/).some((w) => w.length > 3 && lower.includes(w)),
         ) || audit.qa_presets[0];
       if (match) {
-        setQaItem({
+        const nextItem = {
           ...match,
           question_native: trimmed,
           question_en: trimmed,
-        });
+        };
+        setQaItem(nextItem);
+        return nextItem;
       }
+      return null;
     }
   };
+
+  /** Existing tap-a-sample behaviour, kept as the graceful path when voice is unusable. */
+  const SAMPLE_VOICE_FALLBACK_QUESTION = 'Can owner deduct painting charges automatically?';
+
+  const fallbackToSampleQuestion = (showToast = true) => {
+    if (showToast) onToast('Voice unavailable — pick a sample question');
+    void handleAskMobileQA(SAMPLE_VOICE_FALLBACK_QUESTION);
+  };
+
+  /** POST /api/qa → paint the answer card → scroll to the grounded clause → speak the script. */
+  const answerVoiceTranscript = async (transcript: string) => {
+    setVoiceStage('answering');
+    const answer = await handleAskMobileQA(transcript);
+    if (!answer) {
+      setVoiceStage('idle');
+      fallbackToSampleQuestion(true);
+      return;
+    }
+    setFocusedClauseId(answer.clause_id);
+    setVoiceStage('idle');
+    window.requestAnimationFrame(() => {
+      voiceAnswerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    const spoken = answer.answer_native || answer.answer_en;
+    if (spoken) {
+      setIsPlayingVoice(true);
+      await playRegionalSpeech(spoken, language, voiceSpeed, {
+        onStart: () => setIsPlayingVoice(true),
+        onEnd: () => setIsPlayingVoice(false),
+      });
+      setIsPlayingVoice(false);
+    }
+  };
+
+  const handleVoicePressStart = async (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (voiceStage !== 'idle') return;
+    voiceFailedRef.current = false;
+    voicePressActiveRef.current = true;
+    setVoiceTranscript('');
+    setIsHoldingMic(true);
+    setVoiceStage('requesting');
+    try {
+      const handle = await startVoiceCapture({ maxDurationMs: 30_000 });
+      // Released (or cancelled) before the mic permission resolved — do not keep recording.
+      if (!voicePressActiveRef.current) {
+        handle.cancel();
+        handle.cleanup();
+        setVoiceStage('idle');
+        return;
+      }
+      voiceHandleRef.current = handle;
+      setVoiceStage('recording');
+    } catch {
+      voiceHandleRef.current = null;
+      voiceFailedRef.current = true;
+      setIsHoldingMic(false);
+      setVoiceStage('idle');
+    }
+  };
+
+  const handleVoicePressEnd = async () => {
+    voicePressActiveRef.current = false;
+    setIsHoldingMic(false);
+
+    if (voiceFailedRef.current) {
+      voiceFailedRef.current = false;
+      setVoiceStage('idle');
+      fallbackToSampleQuestion(true);
+      return;
+    }
+
+    const handle = voiceHandleRef.current;
+    voiceHandleRef.current = null;
+    if (!handle) return;
+
+    try {
+      const capture = await handle.stop();
+      handle.cleanup();
+
+      // A quick tap (no held speech) keeps the old tap-a-sample behaviour.
+      if (capture.durationMs < MIN_VOICE_CAPTURE_MS) {
+        setVoiceStage('idle');
+        void handleAskMobileQA(SAMPLE_VOICE_FALLBACK_QUESTION);
+        return;
+      }
+
+      setVoiceStage('transcribing');
+      const stt = await transcribeAudio(capture.dataUrl, language);
+      if (!stt.ok || !stt.transcript) throw new Error(stt.reason || 'STT unavailable');
+
+      setVoiceTranscript(stt.transcript);
+      await answerVoiceTranscript(stt.transcript);
+    } catch {
+      setVoiceStage('idle');
+      fallbackToSampleQuestion(true);
+    }
+  };
+
+  const handleVoicePressCancel = () => {
+    voicePressActiveRef.current = false;
+    setIsHoldingMic(false);
+    const handle = voiceHandleRef.current;
+    voiceHandleRef.current = null;
+    if (handle) {
+      handle.cancel();
+      handle.cleanup();
+    }
+    voiceFailedRef.current = false;
+    if (voiceStage === 'recording' || voiceStage === 'requesting') setVoiceStage('idle');
+  };
+
+  // Release the mic if the component unmounts mid-recording.
+  useEffect(
+    () => () => {
+      voiceHandleRef.current?.cancel();
+      voiceHandleRef.current?.cleanup();
+      voiceHandleRef.current = null;
+    },
+    [],
+  );
+
 
   const showBottomNav =
     screen === 'm1_analyze' ||
@@ -1259,7 +1402,18 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
               <div className="rounded-2xl bg-white border border-outline-variant/40 p-4 space-y-3">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-bold text-primary-container uppercase">
-                    ● {isPlayingVoice || isHoldingMic ? 'Listening / Spoken Reply Active' : 'Live Synced'}
+                    ●{' '}
+                    {voiceStage === 'requesting'
+                      ? 'Opening Microphone…'
+                      : voiceStage === 'recording'
+                        ? 'Recording — Release to Ask'
+                        : voiceStage === 'transcribing'
+                          ? 'Transcribing Your Question…'
+                          : voiceStage === 'answering'
+                            ? 'Verifying Against Clauses…'
+                            : isPlayingVoice || isHoldingMic
+                              ? 'Listening / Spoken Reply Active'
+                              : 'Live Synced'}
                   </span>
                   <span className="px-2 py-0.5 rounded bg-surface-container text-primary-container font-bold">
                     Q#{voiceHistoryCount + 1}
@@ -1271,22 +1425,50 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     <span
                       key={idx}
                       className={`w-1.5 rounded-full bg-primary-container transition-all ${
-                        isPlayingVoice || isHoldingMic ? 'animate-pulse' : ''
+                        voiceStage === 'recording'
+                          ? 'animate-pulse'
+                          : isPlayingVoice || isHoldingMic
+                            ? 'animate-pulse'
+                            : ''
                       }`}
-                      style={{ height: `${h}px` }}
+                      style={{
+                        height: `${voiceStage === 'recording' ? Math.round(h * (1 + ((idx % 3) * 0.25))) : h}px`,
+                      }}
                     />
                   ))}
                 </div>
 
                 <div className="p-3 rounded-xl bg-surface-container-low space-y-1">
-                  <span className="text-[10px] font-bold text-primary-container uppercase">Your Question</span>
-                  <p className="text-xs font-bold text-on-surface">&ldquo;{qaItem?.question_native}&rdquo;</p>
-                  <p className="text-[11px] italic text-on-surface-variant">&ldquo;{qaItem?.question_en}&rdquo;</p>
+                  <span className="text-[10px] font-bold text-primary-container uppercase">
+                    {voiceTranscript ? 'Your Spoken Question' : 'Your Question'}
+                  </span>
+                  <p className="text-xs font-bold text-on-surface">
+                    &ldquo;{voiceTranscript || qaItem?.question_native}&rdquo;
+                  </p>
+                  {!voiceTranscript && (
+                    <p className="text-[11px] italic text-on-surface-variant">
+                      &ldquo;{qaItem?.question_en}&rdquo;
+                    </p>
+                  )}
+                  {(voiceStage === 'transcribing' || voiceStage === 'answering') && (
+                    <p className="text-[10px] font-semibold text-primary-container animate-pulse">
+                      {voiceStage === 'transcribing'
+                        ? 'Sending 30s-max clip to speech-to-text…'
+                        : 'Grounded answer incoming…'}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Grounded Legal Answer */}
-              <div className="rounded-2xl bg-white border border-outline-variant/40 p-4 space-y-3">
+              <div
+                ref={voiceAnswerRef}
+                className={`rounded-2xl bg-white border p-4 space-y-3 transition-shadow ${
+                  voiceStage === 'answering' || voiceStage === 'transcribing'
+                    ? 'border-primary-container/60 shadow-md animate-pulse'
+                    : 'border-outline-variant/40'
+                }`}
+              >
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full bg-surface-container text-primary-container text-[11px] font-bold">
                     ✓ Grounded Legal Answer
@@ -1373,20 +1555,54 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 <div className="flex flex-col items-center gap-2 py-2">
                   <button
                     type="button"
-                    onMouseDown={() => setIsHoldingMic(true)}
-                    onMouseUp={() => {
-                      setIsHoldingMic(false);
-                      handleAskMobileQA('Can owner deduct painting charges automatically?');
+                    onPointerDown={handleVoicePressStart}
+                    onPointerUp={() => {
+                      void handleVoicePressEnd();
                     }}
-                    onClick={() => handleAskMobileQA('Can owner deduct painting charges automatically?')}
+                    onPointerLeave={() => {
+                      if (voiceStage === 'recording' || voiceStage === 'requesting') void handleVoicePressEnd();
+                    }}
+                    onPointerCancel={handleVoicePressCancel}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        void handleAskMobileQA(SAMPLE_VOICE_FALLBACK_QUESTION);
+                      }
+                    }}
+                    disabled={voiceStage === 'transcribing' || voiceStage === 'answering'}
                     aria-label="Hold to Ask voice question"
-                    className={`w-14 h-14 rounded-full bg-primary-container text-white flex items-center justify-center shadow-lg cursor-pointer ${
-                      isHoldingMic ? 'scale-110 ring-4 ring-blue-300' : ''
-                    }`}
+                    aria-pressed={voiceStage === 'recording'}
+                    className={`w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg cursor-pointer select-none touch-none transition-all disabled:opacity-60 disabled:cursor-wait ${
+                      voiceStage === 'recording'
+                        ? 'bg-error scale-110 ring-4 ring-red-300'
+                        : voiceStage === 'requesting' || voiceStage === 'transcribing' || voiceStage === 'answering'
+                          ? 'bg-primary-container scale-105 ring-4 ring-blue-200 animate-pulse'
+                          : 'bg-primary-container'
+                    } ${isHoldingMic && voiceStage !== 'recording' ? 'scale-110 ring-4 ring-blue-300' : ''}`}
                   >
-                    <Icon name="mic" className="text-[26px]" />
+                    <Icon
+                      name={voiceStage === 'recording' ? 'graphic_eq' : 'mic'}
+                      className="text-[26px]"
+                      filled={voiceStage === 'recording'}
+                    />
                   </button>
-                  <span className="text-xs font-bold text-on-surface">Hold to Ask / Tap Sample</span>
+                  <span className="text-xs font-bold text-on-surface">
+                    {voiceStage === 'requesting'
+                      ? 'Opening mic…'
+                      : voiceStage === 'recording'
+                        ? 'Recording… release to ask'
+                        : voiceStage === 'transcribing'
+                          ? 'Transcribing…'
+                          : voiceStage === 'answering'
+                            ? 'Answering…'
+                            : 'Hold to Ask / Tap Sample'}
+                  </span>
+                  {voiceStage === 'recording' && (
+                    <span className="text-[10px] font-semibold text-error">
+                      Speak now — auto-stops after 30s
+                    </span>
+                  )}
                 </div>
 
                 <form
