@@ -202,22 +202,36 @@ containers.
 - Safe areas: `.pt-safe` / `.pb-safe` wrappers around `env(safe-area-inset-*)`.
 
 > **Deviation:** the reference spec calls for a **62px** sticky mobile bar; the shipped header is
-> `h-14` = **56px**. See §8.
+> `h-14` = **56px** (`src/components/MobileFlow.tsx:421`). Everything anchored to it — the toast at
+> `top-20`, the sticky sub-header, the clause scroll offset — assumes 56px. See §8.1.
 
 ---
 
 ## 6. Signature interactions
 
-### 6.1 Clause dim-to-55% + pulse ring
+### 6.1 Clause dim-to-55% + pulse ring — **driven by audio playback**
 
-The desktop reconstructed sheet is a bidirectional synchronised viewer: focusing a finding scrolls
-and highlights its clause.
+The desktop reconstructed sheet is a bidirectional synchronised viewer: **audio playback and the Q&A jump
+drive the clause state**, and clicking a finding jumps into the same state.
 
 ```
-idle            → opacity-100
-some clause hit → the *other* clauses drop to opacity-55  (`transition-all duration-300`)
-target clause   → .clause-active-pulse
+idle                       → opacity-100, no outline
+some clause is active      → the *other* clauses drop to opacity-55  (`transition-all duration-300`)
+the target clause          → .clause-active-pulse
 ```
+
+The canonical source of the active clause is the **audio walkthrough**, not the click. When a narration item
+for a clause starts (`onItemStart` from the clause playlist, which resolves each item through
+`audioSync.playRegionalSpeech`), the viewer:
+
+1. **scrolls** the reconstructed sheet to that clause (`scrollIntoView({behavior:'smooth', block:'center'})`),
+2. **pulses** it via `.clause-active-pulse`, and
+3. **dims** every other clause to `opacity-55` for as long as that item is the active one.
+
+The same state machine is entered by `jumpToClause()` — which is what a finding's "Jump to Clause in Sheet →"
+button, a grounded Q&A answer, and a Q&A history item all call. That helper sets `activeClauseId`, scrolls
+after a 60 ms tick (so the sheet view has swapped back to `reconstructed` first), and clears the state after
+2600 ms so the sheet settles while the user reads (`src/components/DesktopWorkspace.tsx:142-155`).
 
 ```css
 @keyframes pulse-ring {
@@ -231,13 +245,25 @@ target clause   → .clause-active-pulse
 }
 ```
 
-The pulse is intentionally finite (2 iterations, 1.1s each) so the sheet stops moving while the user
-reads; the 3px solid outline persists as the resting "you are here" marker. Implementation lives in
-`src/components/DesktopWorkspace.tsx:1162-1164` with `activeClauseId` / `isAnyActive` state driving the
-class swap.
+The pulse is intentionally finite (2 iterations, 1.1s each, so **1.1s × 2** total) so the sheet stops moving
+while the user reads; the 3px solid outline persists as the resting "you are here" marker. Class application
+lives in `src/components/DesktopWorkspace.tsx:1295-1296`:
+
+```tsx
+const isActive   = activeClauseId === clause.clause_id;
+const isAnyActive = activeClauseId !== null;
+… isActive ? 'clause-active-pulse' : isAnyActive ? 'opacity-55' : 'opacity-100'
+```
 
 > **Deviation:** the spec describes dimming to **18%**; the code dims to **55%** (`opacity-55`).
 > 55% is the shipped, readable value — 18% would push `#131b2e` text below AA on `#faf8ff`.
+
+> **State of the art vs. intent:** the clause *playlist* that would fire `onItemStart` per finding
+> (`src/utils/audioPlaylist.ts`, `buildClausePlaylist` / `playClausePlaylist`) exists only on the unmerged
+> `wl/audio` branch and is imported by no component. Today the pulse is triggered per user action — a
+> finding's Listen button, the walkthrough chip, or a Q&A answer — rather than automatically as a multi-clause
+> walkthrough advances. The visual contract above is what that wiring is meant to drive, so the pulse/dim
+> behaviour is stable either way.
 
 Supporting affordances in the same viewer: OCR tokens are underlined-dashed buttons
 (`bg-blue-100 text-primary-container` → `bg-emerald-100 text-emerald-900` once verified) that open a
@@ -286,7 +312,15 @@ per-component:
 
 Consequence: under reduced motion the pulse is suppressed but the 3px indigo outline remains, so the
 active clause is still identifiable by position and border alone — the cue degrades, it does not
-disappear. Any new animation must be added to this list.
+disappear.
+
+**Standing rule for new work: any new animation must be added to this list.** The opt-out is a manual
+allow-list of selectors, not a blanket rule, so a new keyframe or a new `animate-*` utility added to a
+component is *not* covered by default — it will keep moving for users who asked it not to. When you add
+`.clause-pulse-v2`, `animate-bounce`, a framer-motion spring, a `scrollIntoView({behavior:'smooth'})` that
+runs unprompted, or a CSS `transition` that carries meaning rather than polish, add its selector here in the
+same commit. Check with `npm run dev` + OS "Reduce motion" on, and expect a `prefers-reduced-motion` block in
+any third-party widget you drop in.
 
 ### 7.2 Labels and semantics present in the build
 
@@ -303,8 +337,12 @@ disappear. Any new animation must be added to this list.
   drawn with `peer-checked:` pseudo-elements.
 - Toggles and tabs are `<button type="button">`; the file input is a hidden native input triggered by
   a button, so it stays in the tab order.
-- Live regions: status feedback uses a toast (`fixed top-20 right-6 z-[60]`, `shadow-xl`) rather than
-  `role="status"`/`aria-live` — a gap worth closing.
+- Live regions: the global toast **is** an announced live region — `role="status"` + `aria-live="polite"`
+  (`src/App.tsx:567-570`), so status feedback (`fixed top-20 right-6 z-[60]`, `shadow-xl`, auto-dismissed
+  after 3200 ms) is spoken by screen readers without stealing focus. Because the node is mounted only while
+  `toastMsg` is set, each message is a fresh insertion into the politeness queue, which is what makes it
+  announce reliably. Copy is short and self-contained by design; do not turn it into a multi-step status log
+  without revisiting the 3200 ms window.
 - Colour is never the *only* carrier: severity also appears as a text label, a `●` prefix, an icon
   (`warning` / `check_circle` / `error`) and a numeric score, and `risk_band_label` is plain text.
 
@@ -313,12 +351,21 @@ disappear. Any new animation must be added to this list.
 1. Clause cards in the reconstructed sheet are `<div>`s with no `tabIndex`, `role`, or
    `aria-current` — the dim/pulse state is a purely visual affordance and is not reachable by keyboard
    or announced to a screen reader. Add `role="article"` + `tabIndex={0}` + `aria-current` when the
-   viewer is next touched.
-2. Toast is not an `aria-live` region (§7.2).
+   viewer is next touched. This matters more now that the pulse is audio-driven: a sighted user gets a
+   scroll + ring + dim sequence for each narrated clause, and a screen-reader user gets the audio alone
+   with no announcement of *which* clause is speaking.
+2. **New animations must be registered in the reduced-motion list (§7.1).** The `@media
+   (prefers-reduced-motion: reduce)` block is an explicit selector list, so it silently misses anything added
+   later — a new keyframe, a new `animate-*` class, a motion-library spring. Treat "add the selector" as part
+   of the definition of done for animation work, not as a follow-up.
 3. Some 10–11px caps microcopy (`text-[10px] uppercase tracking-wider`) is below comfortable minimums;
    it is decorative/labelling only and always paired with a larger label.
 4. The 900px JS fork means resizing across the threshold fully remounts the tree — in-progress scroll
    position and local viewer state (zoom, selected clause) are lost.
+5. The audio-driven clause state (scroll + pulse + dim) has no keyboard equivalent — there is no
+   previous/next-clause control, so a keyboard-only or screen-reader user cannot step through the walkthrough
+   the way a listener does. A `role="group"` with arrow-key clause navigation would close both this and
+   gap 1.
 
 ---
 
@@ -328,12 +375,33 @@ Recorded so the doc and the code do not silently diverge. **The code is the sour
 
 | Item | Spec / intent | Shipped | Where |
 | --- | --- | --- | --- |
-| Mobile sticky bar height | 62px | **56px** (`h-14`) | `MobileFlow.tsx:278` |
-| Clause dim when another is active | 18% | **55%** (`opacity-55`) | `DesktopWorkspace.tsx:1163` |
+| **Mobile sticky bar height** | 62px | **56px** (`h-14`) | `MobileFlow.tsx:421` (`sticky top-0 z-30 h-14`) |
+| **Clause pulse duration** | "1100ms" | **1.1s × 2** iterations = **2.2s** total, then the 3px outline persists | `src/index.css:122-125` |
+| Clause dim when another is active | 18% | **55%** (`opacity-55`) | `DesktopWorkspace.tsx:1296` |
+| Clause state trigger | audio `onplay` per clause | `onItemStart` per clause is intended; today `jumpToClause()` fires it per user action (§6.1) | `DesktopWorkspace.tsx:142-155`, `:1296` |
 | Typewriter family | Courier Prime (`--font-typewriter`) | Token defined, unused; components use Tailwind `font-mono` | `index.css` vs `*.tsx` |
-| Breakpoint | 900px fork | 900px in JS; Tailwind `lg`=1024px still gates the 48/52 split | `App.tsx:90,126`; `DesktopWorkspace.tsx:453,977` |
+| Breakpoint | 900px fork | 900px in JS; Tailwind `lg`=1024px still gates the 48/52 split | `App.tsx:90,126`; `DesktopWorkspace.tsx:586,1110` |
+| Toast live region | (previously a gap) | **Shipped**: `role="status"` + `aria-live="polite"` | `App.tsx:567-570` |
 | Dark mode | variant declared | no dark styles | `index.css` |
 | `--spacing-space-*` tokens | declared | components use literal spacing utilities | `index.css` |
+
+### 8.1 The two values people get wrong
+
+**Mobile sticky bar height — 56px, not 62px.** The reference spec asks for a 62px app bar; the shipped header
+is `h-14` = 56px (`MobileFlow.tsx:421`). Everything anchored to it assumes 56px: the toast sits at `top-20`
+(80px = 56 + 24 of breathing room), the sticky sub-header row stacks directly beneath, and the content rail
+uses `pb-6` above the 4-tab bottom nav. If the bar is ever bumped to 62px, the toast offset and any
+`scroll-margin-top` used for clause scrolling must move with it, or content will slide under the chrome. The
+56px figure also matters for it being *above* the 44px minimum touch target with room for a 20px icon and an
+11px label.
+
+**Clause pulse — 1.1s × 2, i.e. 2.2s of motion.** `.clause-active-pulse` runs `pulse-ring 1.1s ease-out 2`
+(`src/index.css:122-125`): two rings, 2.2 seconds of movement in total, then the animation stops and only the
+`3px solid #1d4ed8` outline remains. Read that as a hard budget, not a starting point. The two-iteration cap
+is what keeps the sheet still while someone reads, and it is what makes the audio-driven version tolerable
+when several clauses are narrated in sequence. Lengthening it, looping it, or adding an `animate-pulse`
+alongside it would push a reading surface past the point of comfort — and any change here must land in the
+reduced-motion selector list (§7.1) in the same edit.
 
 ---
 
@@ -355,5 +423,16 @@ Statute/OCR ref  font-mono text-[10px] text-on-surface-variant
 Critical         text-error   bg-red-50/35    border-red-300
 Caution          text-amber-800 bg-amber-50/35 border-amber-300
 Safe             text-emerald-800 bg-emerald-50/30 border-emerald-300
-Focus/active     outline: 3px solid #1d4ed8 + pulse-ring 1.1s ×2 (disabled under reduced motion)
+Focus/active     outline: 3px solid #1d4ed8 + pulse-ring 1.1s ×2 = 2.2s of motion
+                 (animation suppressed under prefers-reduced-motion; outline stays)
+Mobile app bar   h-14 = 56px (NOT 62px) — re-check toast top-20 + scroll offsets if you change it
+New animation    MUST be appended to the §7.1 reduced-motion selector list in the same commit
 ```
+
+## 10. Related docs
+
+- [`docs/audit-result.schema.md`](docs/audit-result.schema.md) — the `/api/*` response contracts this UI
+  renders, including `injection_defense`, the success-path `completeness` envelope, `panIndiaOnly`, and the
+  server-recomputed `rupee_exposure_inr`.
+- [`docs/phase-status.md`](docs/phase-status.md) — what is actually built, phase by phase.
+- [`todo.md`](todo.md) — the build checklist with a `## Status (auto-verified)` header at the top.
