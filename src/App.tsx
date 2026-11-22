@@ -440,7 +440,7 @@ export default function App() {
             setCapturedPhotoUrl(photoUrl || PHOTO_CHECK_DEMO_URL);
             setMobileScreen('m2_photo');
           }}
-          onRunPhotoAnalysis={(blackout) => runPhotoAnalysisPipeline(blackout)}
+          onRunPhotoAnalysis={(strategy) => runPhotoAnalysisPipeline(strategy !== 'none')}
           onFilesSelected={handleFilesSelected}
           onSelectPreset={handleSelectPreset}
           onOpenVaultItem={handleOpenVaultItem}

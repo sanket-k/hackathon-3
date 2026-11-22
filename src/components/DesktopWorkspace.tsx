@@ -477,7 +477,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
 
             <button
               type="button"
-              onClick={onOpenBriefModal}
+              onClick={() => onOpenBriefModal()}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant/50 bg-white text-on-surface hover:bg-surface-container-low text-xs font-semibold whitespace-nowrap cursor-pointer"
             >
               <Icon name="summarize" className="text-[16px] text-primary-container" />

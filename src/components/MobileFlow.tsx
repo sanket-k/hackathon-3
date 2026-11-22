@@ -46,7 +46,7 @@ interface MobileFlowProps {
   onClearVault: () => void;
   onSaveNote: (text: string, tag?: string) => void;
   onExportVaultJson: () => void;
-  onExportBrief: (request: { selectedClauseIds: string[]; tone: 'polite' | 'firm' }) => void;
+  onExportBrief?: (request: { selectedClauseIds: string[]; tone: 'polite' | 'firm' }) => void;
   onOpenSecurityModal: () => void;
   onSwitchToDesktop?: () => void;
   isDesktopPreview?: boolean;
@@ -739,7 +739,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
               <div className="space-y-2.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => onRunPhotoAnalysis(blackoutEnabled)}
+                  onClick={() => onRunPhotoAnalysis(blackoutEnabled ? 'header' : 'none')}
                   className="w-full min-h-[48px] rounded-2xl bg-primary-container text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
                   <Icon name="psychology" className="text-[20px]" />
