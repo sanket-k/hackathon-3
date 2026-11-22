@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contractaudit.local/rules/schema.json",
+  "title": "RulePack",
+  "description": "Schema for a legal rule pack used by src/data/rulePacks.ts (RulePack in src/types/contract.ts).",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "pack_id",
+    "display_name",
+    "jurisdiction",
+    "contract_types",
+    "verified_date",
+    "rules",
+    "expected_clauses"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rule_pack_v1",
+      "description": "Version tag of the rule pack format."
+    },
+    "pack_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Stable slug identifier for the pack, e.g. 'in-ka-rental'. Must be unique across packs."
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human readable pack name shown in the UI."
+    },
+    "jurisdiction": {
+      "type": "object",
+      "required": ["country", "state", "cities"],
+      "additionalProperties": false,
+      "properties": {
+        "country": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ISO 3166-1 alpha-2 country code, e.g. 'IN'."
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1,
+          "description": "State/region code, or 'ALL' / 'GENERAL' for pan-India packs."
+        },
+        "cities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "description": "Cities the pack applies to. May be empty for central/general packs."
+        }
+      }
+    },
+    "contract_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "Contract categories this pack applies to, e.g. 'residential_rental', 'personal_loan', 'retail_credit', 'employment_offer', 'general'."
+    },
+    "verified_date": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Date the pack's citations were last verified, as an ISO date string (YYYY-MM-DD).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/rule"
+      },
+      "description": "Detection rules for this pack. rule_id values must be unique within the pack."
+    },
+    "expected_clauses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/expected_clause"
+      },
+      "description": "Clauses expected to be present in a complete contract of these types."
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": [
+        "rule_id",
+        "category",
+        "title",
+        "basis_type",
+        "severity",
+        "benchmark",
+        "statutory_citation",
+        "detection_hint",
+        "negotiation_ask"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Z0-9][A-Z0-9_]*$",
+          "description": "Stable uppercase identifier, e.g. 'IN_KA_DEPOSIT_CAP'. Unique within a pack."
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Finding category, e.g. 'deposit', 'escalation', 'lock_in', 'prepayment', 'non_compete', 'dispute'."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short human readable rule title."
+        },
+        "basis_type": {
+          "$ref": "#/$defs/basis_type"
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "benchmark": {
+          "$ref": "#/$defs/benchmark"
+        },
+        "statutory_citation": {
+          "$ref": "#/$defs/statutory_citation"
+        },
+        "detection_hint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Plain-language instruction for what pattern in a contract triggers this rule."
+        },
+        "negotiation_ask": {
+          "$ref": "#/$defs/negotiation_ask"
+        }
+      }
+    },
+    "basis_type": {
+      "type": "string",
+      "enum": [
+        "statutory_conflict",
+        "above_local_norm",
+        "missing_protection",
+        "standard"
+      ],
+      "description": "Why the rule matters: conflicts with statute, exceeds local norms, protects against a missing protection, or is a plain standard."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "caution", "safe"],
+      "description": "Risk band assigned to findings produced by this rule."
+    },
+    "benchmark": {
+      "type": "object",
+      "required": ["metric", "typical_label"],
+      "additionalProperties": false,
+      "properties": {
+        "metric": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Machine readable metric name, e.g. 'months_of_rent', 'annual_percent', 'percent_fee'."
+        },
+        "max_fair_value": {
+          "type": "number",
+          "description": "Fair upper bound for the metric. Omitted when the benchmark is not numeric."
+        },
+        "typical_label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human readable benchmark label shown in the UI."
+        }
+      }
+    },
+    "statutory_citation": {
+      "type": "object",
+      "required": ["act", "section", "source_url"],
+      "additionalProperties": false,
+      "properties": {
+        "act": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the act, code, circular or master direction."
+        },
+        "section": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Section / clause reference within the act."
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://",
+          "description": "Public URL where the citation can be verified."
+        }
+      }
+    },
+    "negotiation_ask": {
+      "type": "object",
+      "required": ["short_title", "polite_ask", "firm_ask", "replacement_wording"],
+      "additionalProperties": false,
+      "properties": {
+        "short_title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One-line label for the negotiation item."
+        },
+        "polite_ask": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Soft, collaborative wording for requesting the change."
+        },
+        "firm_ask": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Assertive wording citing the statutory basis."
+        },
+        "replacement_wording": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Drop-in clause text the counterparty can accept."
+        }
+      }
+    },
+    "expected_clause": {
+      "type": "object",
+      "required": ["id", "label", "why_it_matters"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9_]*$",
+          "description": "Stable snake_case identifier, e.g. 'repair_timeline'. Unique within a pack."
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human readable clause name."
+        },
+        "why_it_matters": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explanation of the risk of omitting this clause."
+        }
+      }
+    }
+  }
+}
