@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { selectRulePack, detectJurisdiction } from './src/data/rulePacks.ts';
+import { selectRulePack, detectJurisdiction, RULE_PACKS } from './src/data/rulePacks.ts';
 import { parseJSONFromLLMResponse, sanitizeForPrompt } from './src/utils/promptSecurity.ts';
 import { buildPrompt, INJECTION_DEFENSE_VERSION } from './src/utils/prompts.ts';
 import { callLLMChat } from './server/llmClient.ts';
@@ -45,6 +45,15 @@ const SARVAM_TTS_MAX_CHARS = 500;
 const SARVAM_STT_MAX_SECONDS = 30;
 // saaras:v4 codemix supports up to 50 domain keyterms (bias the decoder toward them).
 const SARVAM_STT_MAX_KEYTERMS = 50;
+// webm/opus at ~24kbps ≈ 3000 bytes/s. Reject base64 blobs sized beyond the 30s
+// cap plus headroom, so a client that omits duration_seconds cannot bypass it.
+const SARVAM_STT_BYTES_PER_SECOND = 3000;
+const SARVAM_STT_MAX_DECODED_BYTES = SARVAM_STT_BYTES_PER_SECOND * 34;
+
+// Vercel caps request bodies at ~4.5MB; stay under the platform ceiling.
+const BODY_LIMIT = '4.5mb';
+// Vision OCR spends tokens per image; cap hard instead of silently slicing later.
+const OCR_MAX_IMAGES = 3;
 
 /** Baseline exit-model parameters per contract type (overridden by the client). */
 function buildWayOutParamsFor(contractType: string): WayOutParams {
@@ -267,7 +276,7 @@ function buildLocalDeterministicAudit(rawText: string, language: LanguageCode, d
 
 async function createApp() {
   const app = express();
-  app.use(express.json({ limit: '5mb' }));
+  app.use(express.json({ limit: BODY_LIMIT }));
 
   app.get('/api/health', (_req, res) => {
     const provider = (process.env.LLM_PROVIDER || 'openrouter').toLowerCase();
@@ -275,11 +284,24 @@ async function createApp() {
       provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENROUTER_API_KEY,
     );
     const sarvamConfigured = Boolean(process.env.SARVAM_API_KEY);
+    // Audit-trail surface: each prompt's rendered-system hash at its canonical args.
+    const prompts = [
+      { id: 'contract.ocr@1', hash: buildPrompt('contract.ocr@1').template_hash },
+      {
+        id: 'contract.audit@1',
+        hash: buildPrompt('contract.audit@1', { pack: RULE_PACKS['in-general-fallback'], language: 'en' })
+          .template_hash,
+      },
+      { id: 'contract.qa@1', hash: buildPrompt('contract.qa@1', { language: 'en' }).template_hash },
+    ];
     res.json({
       status: 'ok',
       provider,
       llmConfigured,
       sarvamConfigured,
+      injection_defense: INJECTION_DEFENSE_VERSION,
+      prompts,
+      body_limit: BODY_LIMIT,
       sarvam: {
         tts_model: SARVAM_TTS_MODEL,
         stt_model: SARVAM_STT_MODEL,
@@ -287,6 +309,7 @@ async function createApp() {
         tts_max_chars: SARVAM_TTS_MAX_CHARS,
         stt_max_seconds: SARVAM_STT_MAX_SECONDS,
         stt_max_keyterms: SARVAM_STT_MAX_KEYTERMS,
+        stt_max_decoded_bytes: SARVAM_STT_MAX_DECODED_BYTES,
       },
     });
   });
@@ -298,8 +321,15 @@ async function createApp() {
         images?: string[];
         language_hint?: LanguageCode;
       };
-      if (!Array.isArray(images) || images.length === 0 || images.length > 5) {
-        res.status(400).json({ error: 'INVALID_IMAGES', message: 'Provide 1 to 5 JPEG data URLs.' });
+      if (!Array.isArray(images) || images.length === 0) {
+        res.status(400).json({ error: 'INVALID_IMAGES', message: 'Provide 1 to 3 JPEG data URLs.' });
+        return;
+      }
+      if (images.length > OCR_MAX_IMAGES) {
+        res.status(400).json({
+          error: 'TOO_MANY_IMAGES',
+          message: 'Provide 1 to 3 JPEG data URLs.',
+        });
         return;
       }
 
@@ -310,7 +340,7 @@ async function createApp() {
           type: 'text',
           text: `Transcribe these ${images.length} contract page(s) (hint: ${ALLOWED_LANGS.has(language_hint) ? language_hint : 'en'}).`,
         },
-        ...images.slice(0, 3).map((url) => ({ type: 'image_url', image_url: { url } })),
+        ...images.slice(0, OCR_MAX_IMAGES).map((url) => ({ type: 'image_url', image_url: { url } })),
       ];
 
       const raw = await callLLMChat({
@@ -607,6 +637,14 @@ async function createApp() {
         .slice(0, SARVAM_STT_MAX_KEYTERMS);
 
       const buffer = Buffer.from(audio_base64.replace(/^data:[^;]+;base64,/, ''), 'base64');
+
+      // Defence-in-depth when the client omits/understates duration_seconds:
+      // estimate length from the decoded byte count (webm/opus ≈ 3000 B/s).
+      if (buffer.length > SARVAM_STT_MAX_DECODED_BYTES) {
+        res.json({ fallback_recommended: true, reason: 'AUDIO_TOO_LONG' });
+        return;
+      }
+
       const form = new FormData();
       form.append('file', new Blob([buffer], { type: 'audio/webm' }), 'query.webm');
       form.append('model', SARVAM_STT_MODEL);
@@ -663,6 +701,35 @@ async function createApp() {
       });
     }
   }
+
+  // JSON body-parser errors (must be the LAST handler so it catches any route).
+  // `entity.too.large` comes from the 4.5MB Vercel-aligned ceiling; a SyntaxError
+  // means the payload was not valid JSON at all.
+  app.use(
+    (
+      err: (Error & { type?: string; status?: number }) | null,
+      _req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (!err) {
+        next();
+        return;
+      }
+      if (err.type === 'entity.too.large' || err.status === 413) {
+        res.status(413).json({
+          error: 'PAYLOAD_TOO_LARGE',
+          message: `Request body exceeds the ${BODY_LIMIT} limit. Send fewer pages or a smaller image.`,
+        });
+        return;
+      }
+      if (err instanceof SyntaxError) {
+        res.status(400).json({ error: 'INVALID_JSON' });
+        return;
+      }
+      next(err);
+    },
+  );
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`LawLens server running on http://0.0.0.0:${PORT}`);
