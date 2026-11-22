@@ -25,7 +25,7 @@
 | 5 — UI shell & design system | **Partial** | `src/index.css` `@theme` + reduced-motion list; 900px JS fork; 48/52 split; pan-India badge (`DesktopWorkspace.tsx:661`). 56px bar (not 62px), 55% dim (not 18%), no SVG sprite, no `data-clause-id` |
 | 6 — Audio, voice Q&A & sync | **Partial** | `audioPlaylist.ts` **wired into both shells** (intro → per-clause `onItemStart` → scroll/pulse/dim); `audioSync` + `voiceCapture` + Hold-to-Ask. Mobile scrolls + highlights per item but has no pulse/dim |
 | 7 — Negotiate, vault & brief | **Done** | WhatsApp **+ Email** channels with `clipboard.ts` textarea fallback; `pdfBrief` driven by selected asks + Polite/Firm tone; vault caps 20KB/doc & 480KB total, never persists images/audio, honours "Don't save" |
-| 8 — Integration, verification & freeze | **Partial** | `scripts/verify.sh` secret gates now scoped and clean, typecheck + tests + 5 of 6 routes curled; `/api/ocr` uncurled, no desktop/phone/deploy smoke run recorded |
+| 8 — Integration, verification & freeze | **Partial** | `scripts/verify.sh` secret gates now scoped and clean, typecheck + tests + all 6 routes curled (21/22 checks); no phone/deploy smoke run recorded |
 
 Detail per phase (status + one-line evidence) lives in [`docs/phase-status.md`](docs/phase-status.md).
 
@@ -335,9 +335,9 @@ are no longer true.
   excludes `scripts/verify.sh` itself (`SELFTEST_EXCLUDE`), `*.md`, `docs/**`, `dist/**` and
   `public/assets/**` from the prefix gate, and keeps an *unscoped* gate B for real key material
   (`sk-ant-…`, `sk-or-v1-…`, `sk_live_…`). Re-run by hand: all three gates return no hits on this tree.
-- [ ] `curl` all 5 routes — `scripts/verify.sh` exercises `health`, `audit`, `qa`, `tts` **and `stt`**
-  (5 of the 6 exposed routes) plus typecheck and the test suite. `/api/ocr` is still not curled.
-- [ ] Run the 7 smoke tests on desktop 1440×900.
+- [x] `curl` all 6 routes — `scripts/verify.sh` exercises `health`, `ocr`, `audit`, `qa`, `tts` **and `stt`**
+  plus typecheck and the test suite (21/22 checks green, 1 skipped on a quota-limited key).
+- [x] Run the 7 smoke tests on desktop 1440×900 (browser-verified; see docs/phase-status.md).
 - [ ] Run the 7 smoke tests on a real phone via QR.
 - [ ] Resilience: network-off preset path, provider-down path, cached audit path.
 - [ ] Rehearse the 2-minute stage script end to end.

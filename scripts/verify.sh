@@ -247,6 +247,8 @@ AUDIT_BODY='{"contract_text":"Clause 4.2 The Tenant shall deposit an interest-fr
 QA_BODY='{"question":"What is the deposit?","contract_text":"Clause 4.2 The Tenant shall deposit an interest-free refundable caution deposit of Rs 2,50,000 prior to handover of keys.","language":"en"}'
 TTS_BODY='{"text":"This is a verification of the text to speech route.","language":"en"}'
 STT_BODY='{"audio_base64":"AA==","language":"en"}'
+# 1x1 transparent PNG as a data URL; /api/ocr needs >=1 image and no key for a graceful fallback.
+OCR_BODY='{"images":["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="],"language_hint":"en"}'
 
 JS_HEALTH=$(cat <<'JS'
 try {
@@ -356,6 +358,7 @@ if [ "$SERVER_UP" -ne 1 ]; then
   for n in "GET /api/health" "POST /api/audit" "POST /api/qa" "POST /api/tts" "POST /api/stt"; do
     record "route ${n}" SKIP "server not running"
   done
+  record "route POST /api/ocr" SKIP "server not running"
   record "shape health: status ok" SKIP "server not running"
   record "shape health: prompts[3]" SKIP "server not running"
   record "shape audit: ok + findings/completeness/panIndiaOnly" SKIP "server not running"
@@ -373,6 +376,7 @@ else
   json_check "shape qa: ok + boolean grounded" "$JS_QA" "contract.qa@1"
   check_route "route POST /api/tts" POST "/api/tts" "$TTS_BODY" 60
   json_check "shape tts: JSON envelope" "$JS_NOT_HTML" "bulbul proxy"
+  check_route "route POST /api/ocr" POST "/api/ocr" "$OCR_BODY" 90
   check_route "route POST /api/stt" POST "/api/stt" "$STT_BODY" 60
   json_check "shape stt: JSON envelope" "$JS_NOT_HTML" "saaras proxy"
 fi
