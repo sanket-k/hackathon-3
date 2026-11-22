@@ -3,13 +3,14 @@
 Contracts for the three LLM-backed routes: `POST /api/audit` (`contract.audit@1`), `POST /api/qa`
 (`contract.qa@1`) and `POST /api/ocr` (`contract.ocr@1`).
 
-Sources of truth: `server.ts` (§`/api/ocr` ~295, `/api/audit` ~337, `/api/qa` ~439),
-`src/types/api.ts` (`AuditSuccessEnvelope`, `AuditFallbackEnvelope`, `QaSuccessEnvelope`, `OcrEnvelope`,
-`RulePackAppliedEnvelope`, `AuditCompletenessEnvelope`), `src/utils/prompts.ts` (the only prompt catalog),
-`src/utils/promptSecurity.ts` (`INJECTION_DEFENSE_VERSION`, `cyrb53`, `parseJSONFromLLMResponse`),
-`src/utils/verifier.ts` (dual-anchor quote verification), `src/utils/exposureMath.ts` (deterministic rupee
-math), `src/data/rulePacks.ts` (`selectRulePack` → `panIndiaOnly`), and `src/App.tsx`
-(`hydrateAuditFromApiPayload`, lines 32–86).
+Sources of truth: `server.ts` (§`/api/ocr` `:318`, `/api/audit` `:367`, `/api/qa` `:469`, plus
+`/api/tts` `:544`, `/api/stt` `:605`, `/api/health` `:281`), `src/types/api.ts` (`AuditSuccessEnvelope`,
+`AuditFallbackEnvelope`, `QaSuccessEnvelope`, `OcrEnvelope`, `RulePackAppliedEnvelope`,
+`AuditCompletenessEnvelope`), `src/utils/prompts.ts` (the only prompt catalog), `src/utils/promptSecurity.ts`
+(`INJECTION_DEFENSE_VERSION`, `cyrb53`, `parseJSONFromLLMResponse`), `src/utils/verifier.ts` (dual-anchor quote
+verification + strict `rule_id` pinning), `src/utils/exposureMath.ts` (deterministic rupee math),
+`src/data/rulePacks.ts` (`selectRulePack` → `panIndiaOnly`), and `src/App.tsx`
+(`hydrateAuditFromApiPayload`, `:59-127`).
 
 > **The API envelope is not the client shape.** `/api/audit` returns a *partial* audit — summary, findings,
 > missing clauses, rule-pack metadata, completeness — and the client hydrates it on top of a known-good
@@ -21,12 +22,46 @@ math), `src/data/rulePacks.ts` (`selectRulePack` → `panIndiaOnly`), and `src/A
 
 | Field | Route | Status |
 | --- | --- | --- |
-| `prompt_id`, `template_hash` | **all three** LLM routes | From the central catalog — `buildPrompt()` in `src/utils/prompts.ts` is the only way to reach a model |
-| `injection_defense` | `/api/audit` | Always `"injectionDefense@1"` |
-| `completeness` | `/api/audit` | Now on the **success** path, not just the fallback |
-| `rule_pack_applied.panIndiaOnly` | `/api/audit` | New boolean |
-| `summary.rupee_exposure_inr` | `/api/audit` | **Recomputed server-side**, model value discarded |
-| `grounded` | `/api/qa` | New boolean — `false` means the route refused |
+| `prompt_id`, `template_hash` | **all three** LLM routes — `/api/ocr` `:354`, `/api/audit` `:434-435`, `/api/qa` `:510-511` (refusal) and `:525-526` (grounded) | From the central catalog — `buildPrompt()` in `src/utils/prompts.ts` is the only way to reach a model |
+| `injection_defense` | `/api/audit` `:436`, echoed by `/api/health` `:302` — **not** `/api/ocr` or `/api/qa` | Always `"injectionDefense@1"` |
+| `completeness` | `/api/audit` `:445` | On the **success** path, not just the fallback |
+| `rule_pack_applied.panIndiaOnly` | `/api/audit` `:443` | `true` = no state-specific pack matched; **rendered** as the "Pan-India norms only" badge |
+| `summary.rupee_exposure_inr` | `/api/audit` `:414-426` | **Deterministic** — recomputed server-side, model value discarded (§2.3) |
+| `grounded` | `/api/qa` `:509` / `:524` | `false` means the route refused; the exact body is in §4.2 |
+
+### Hard limits on every route
+
+| Limit | Value | Where |
+| --- | --- | --- |
+| Request body | **4.5MB** (`express.json({limit:'4.5mb'})`) — the Vercel platform ceiling, not `5mb` | `BODY_LIMIT` `server.ts:54`, applied `:279`, echoed by `/api/health` as `body_limit` |
+| `/api/ocr` images | **3** — a hard `400 TOO_MANY_IMAGES` above it, no silent slice | `OCR_MAX_IMAGES` `server.ts:56`, guard `:328-334` |
+| `/api/audit` contract text | fenced at **35 000** chars in the prompt; `400 INVALID_TEXT` under 20 chars | `prompts.ts:104`, `server.ts:377` |
+| `/api/qa` contract / question | **28 000** / **600** chars | `prompts.ts:103-104` |
+| `/api/tts` text | **500** chars (truncated, not rejected) | `SARVAM_TTS_MAX_CHARS` `:43`, `:564` |
+| `/api/stt` audio | **≤30s**, enforced twice: client-reported `duration_seconds`, then a **byte-based duration estimate** (`SARVAM_STT_BYTES_PER_SECOND = 3000` × 34 ≈ 102 KB) so a caller that omits the duration cannot bypass it | `server.ts:45-51`, `:620`, `:643-646` |
+
+### Prompt identity — the same mechanism on all three LLM routes
+
+`src/utils/prompts.ts` is the **only** way to reach a model: `PROMPT_IDS` (`:17`) is exactly
+`contract.ocr@1`, `contract.audit@1`, `contract.qa@1`, and `buildPrompt()` (`:88`) returns
+`{prompt_id, template_hash, system, user}`. `template_hash = cyrb53(system)` (`promptSecurity.ts:8`) over the
+*rendered* system prompt, so it moves when the rule pack, the language instruction or the defence preamble
+moves.
+
+| Route | `prompt_id` | `template_hash` sourced from | Emitted at |
+| --- | --- | --- | --- |
+| `/api/audit` | `contract.audit@1` | rendered with the **active pack** + the language instruction, so the same code + pack always rehashes identically | `server.ts:434-435` (success), echoed under `prompts[]` by `/api/health` `:289-293` |
+| `/api/qa` | `contract.qa@1` | rendered with the language instruction only | `server.ts:510-511` (refusal body) and `:525-526` (grounded body) — present on **both** branches |
+| `/api/ocr` | `contract.ocr@1` | rendered with no arguments, so the hash is a constant per build | `server.ts:354` |
+
+`injection_defense` is emitted by `/api/audit` (`:436`) and `/api/health` (`:302`) only; `/api/ocr` and
+`/api/qa` still apply the same `<untrusted_contract_text>` fence and role-override filters (they come from the
+shared `DEFENCE_PREAMBLE` inside every system prompt) but do not tag it in their response body.
+
+> **Type drift, one field:** `AuditSuccessEnvelope` (`src/types/api.ts:32-42`) declares every success key
+> **except** `injection_defense`, even though the route always sends it. The wire is the source of truth; the
+> interface just does not model that one key yet. `RulePackAppliedEnvelope` (`:13-24`) does carry
+> `panIndiaOnly: boolean` (required — the client defaults it defensively at `App.tsx:101-104`).
 
 ---
 
@@ -44,8 +79,10 @@ Content-Type: application/json
 | `contract_type` | `string` | no | `'residential_rental'` | Used with the detected jurisdiction to select the active rule pack **and** to pick the exit model that floors rupee exposure. |
 | `title` | `string` | no | `'Uploaded Contract'` | Echoed into the hydrated `AuditResult.title`; not returned by the route. |
 
-Callers are same-origin (`/api/audit`, no CORS headers); the browser only ever sends **masked** text
-after `assertNoPiiLeak`.
+Callers are same-origin (`/api/audit`, no CORS headers); the browser only ever sends **masked** text after
+`checkSafeToSend()` (`piiGuard.ts:147`) verifies it. That check is fail-closed: a `safeToSend:false` verdict
+blocks the `fetch` outright and records `blocked`/`blockReason` in the intake stats (`App.tsx:416` Lane B,
+`:588` Lane A). `assertNoPiiLeak()` is the throwing variant used by the guardrail tests.
 
 ---
 
@@ -56,13 +93,13 @@ after `assertNoPiiLeak`.
 | `ok` | `true` | Envelope success flag. Always `true` on both the LLM path and the fallback path. |
 | `prompt_id` | `'contract.audit@1'` | Typed literal from `PromptId`. Use for eval/trace correlation. |
 | `template_hash` | `string` | `cyrb53(systemPrompt)` in base-16 — a hash of the *rendered* system prompt (rule pack + language instructions + defence preamble). Changing the pack, the language, or `INJECTION_DEFENSE_VERSION` changes the hash. |
-| `injection_defense` | `'injectionDefense@1'` | Version tag of the prompt-injection policy in force (`INJECTION_DEFENSE_VERSION`, `src/utils/promptSecurity.ts:6`). **Always present on this route**, on every successful audit — it is the evidence that the `<untrusted_contract_text>` fence and the role-override filters were applied. Bump it when the policy changes; hashes change with it. |
+| `injection_defense` | `'injectionDefense@1'` | Version tag of the prompt-injection policy in force (`INJECTION_DEFENSE_VERSION`, `src/utils/promptSecurity.ts:6`). **Always present on this route**, on every successful audit — it is the evidence that the `<untrusted_contract_text>` fence and the role-override filters were applied. Bump it when the policy changes; hashes change with it. Also echoed by `GET /api/health` (`:302`) next to each prompt's canonical hash. |
 | `rule_pack_applied` | `object` | The jurisdiction pack that scored this contract. See §2.1. |
 | `completeness` | `{status, missing_gaps}` | **Returned on the success path** (it used to exist only in the fallback payload). See §2.2. |
-| `dropped_unverified_count` | `number` | Findings the dual-anchor verifier **discarded** (quote not found ≥ 0.80 Jaccard, or `rule_id` outside the active pack). Surfaced as a quality signal; a high count means the model hallucinated. |
+| `dropped_unverified_count` | `number` | Findings the dual-anchor verifier **discarded** — unlocatable quote (< 0.80 Jaccard), quote under 3 tokens, or a `rule_ref.rule_id` that is **missing, empty or outside the active pack** (§2.4). Surfaced as a quality signal; a high count means the model hallucinated. |
 | `summary` | `object \| undefined` | `{risk_score, risk_band, rupee_exposure_inr, top_3_bullets, walkthrough_intro_spoken, …}` as emitted by the model, **except** `rupee_exposure_inr`, which is replaced (§2.3). Not validated field-by-field; `undefined` when the model emitted no summary. |
 | `findings` | `AuditFinding[]` | Only findings that passed verification, each with a `verification` block attached. Possibly `[]`. |
-| `missing_clauses` | `Array<{label, why_it_matters, recommended_addendum?}>` | Expected-but-absent clauses. When the model returns none (or only malformed entries), the route substitutes `pack.expected_clauses` — `groundMissingClauses()`, `server.ts:112`. Never empty for a pack that declares `expected_clauses`. |
+| `missing_clauses` | `Array<{label, why_it_matters, recommended_addendum?}>` | Expected-but-absent clauses. When the model returns none (or only malformed entries), the route substitutes `pack.expected_clauses` — `groundMissingClauses()`, `server.ts:121`. Never empty for a pack that declares `expected_clauses`. |
 
 ### 2.1 `rule_pack_applied`
 
@@ -73,11 +110,15 @@ after `assertNoPiiLeak`.
 | `is_exact_jurisdiction_match` | `boolean` | `true` when the contract type + detected state/city matched a pack exactly. |
 | `verified_date` | `string` | Pack currency date (all packs: `2026-11-21`), rendered as the "Nov 2026" style badge. |
 | `match_pct` | `number` | **Derived, not measured**: `88` when `is_exact_jurisdiction_match`, else `65`. (The local fallback uses `64` instead of `65` — cosmetic drift, both mean "loose match".) |
-| `panIndiaOnly` | `boolean` | **New.** `true` when no state-specific pack applies and only pan-India norms were used. Comes from `selectRulePack()` (`src/data/rulePacks.ts:240`): the loan and employment packs are central acts, so they are `true`; Karnataka rental is `false`; any un-matched rental or unknown type falls to `in-general-fallback` with `true`. Consumers should surface it as "Pan-India norms only" instead of implying a local match — the badge itself is on `main` (`cc5f192 feat(desktop): … lane + pan-India badges`), not in this worktree, so here the field is emitted but unrendered. |
+| `panIndiaOnly` | `boolean` | `true` when no state-specific pack applies and only pan-India norms were used. Comes from `selectRulePack()` (`src/data/rulePacks.ts:247-259`): the loan and employment packs are central acts, so they are `true`; Karnataka rental is `false`; any un-matched rental or unknown type falls to `in-general-fallback` with `true`. Surfaced in the UI as the **"Pan-India norms only"** badge in the desktop compliance bar (`DesktopWorkspace.tsx:661-663`) instead of implying a local match. |
 
 `panIndiaOnly` and `is_exact_jurisdiction_match` are deliberately **not** inverses: an RBI loan pack is an
 exact *type* match and still pan-India-only. Read `panIndiaOnly` when you want to know whether local law was
 actually consulted; read `is_exact_jurisdiction_match` when you want to know how confident the pack choice was.
+
+The client also defensively defaults it: `hydrateAuditFromApiPayload()` does
+`panIndiaOnly: payload.rule_pack_applied.panIndiaOnly ?? fallbackBase.rule_pack_applied.panIndiaOnly ?? false`
+(`App.tsx:101-104`), so a cached or older payload cannot silently claim a local match.
 
 ### 2.2 `completeness` — present on success
 
@@ -87,7 +128,7 @@ actually consulted; read `is_exact_jurisdiction_match` when you want to know how
 
 Previously the amber "Completeness Gate Triggered" banner only worked on the deterministic fallback path,
 because the LLM path withheld `completeness`. It is now always emitted, so the gate works when the model
-answers too. Resolution order, `normaliseCompleteness()` (`server.ts:76`):
+answers too. Resolution order, `normaliseCompleteness()` (`server.ts:85`):
 
 1. **Model verdict wins.** If the model returned `completeness.status === 'missing_pages'`, or a non-empty
    `missing_gaps`, the route returns `missing_pages` with the model's own gap strings. If it said
@@ -95,7 +136,7 @@ answers too. Resolution order, `normaliseCompleteness()` (`server.ts:76`):
 2. **Otherwise, clause-numbering-gap detection runs on the raw contract text.**
 3. Only if neither fires is the status `complete`.
 
-**Clause-numbering-gap detection** (`detectClauseNumberingGap()`, `server.ts:100`) is the canonical
+**Clause-numbering-gap detection** (`detectClauseNumberingGap()`, `server.ts:109`) is the canonical
 "missing middle page" fingerprint — a scan whose page 2 is absent resumes mid-sentence at a higher clause
 number:
 
@@ -110,7 +151,9 @@ ascending, and returns on the **first** gap larger than one:
 > `Clause numbering jumps from Clause 4 directly to Clause 7 — a middle page may be missing.`
 
 That single string becomes `missing_gaps[0]` with `status: 'missing_pages'`, which is what drives the amber
-banner (`DesktopWorkspace.tsx:558-566`) and the `Clause 4 → 7` copy in the missing-page preset.
+banner on **both** shells — `DesktopWorkspace.tsx:713-719` and `MobileFlow.tsx:1127-1136` — and the
+`Clause 4 → 7` copy in the missing-page preset. The client does consume it: the hydrator takes
+`payload.completeness` (`App.tsx:114`), and for the fallback branch `payload.audit.completeness` (`:78`).
 
 Two honest limitations: the numbers are **sorted**, not read in document order, so a contract that cites
 "Clause 14" and "Clause 4" but never spells out the intervening numbers will be flagged even though nothing is
@@ -121,10 +164,10 @@ produces a false `complete`. Treat `complete` as "no evidence of a gap", not as 
 
 **The model's arithmetic is never trusted.** After verification, the route recomputes exposure from the
 surviving findings and the contract-type exit model, then overwrites the model's figure
-(`server.ts:384-396`):
+(`server.ts:414-426`):
 
 ```ts
-const wayOutParams = buildWayOutParamsFor(contract_type);   // server.ts:50 — rental / loan / employment baseline
+const wayOutParams = buildWayOutParamsFor(contract_type);   // server.ts:59 — rental / loan / employment baseline
 const exposure = computeRupeeExposure(verified, wayOutParams, parsed.summary?.rupee_exposure_inr);
 const summary  = parsed.summary ? { ...parsed.summary, rupee_exposure_inr: exposure.total_inr } : undefined;
 ```
@@ -146,7 +189,7 @@ the headline. The third argument is only used to set `overrode_model_value` on t
 `lines[]` breakdown never reach the client today.
 
 The fallback path uses a hardcoded figure per contract type (`₹42 000` loan / `₹0` employment /
-`₹1 35 000` rental, `server.ts:227`) rather than this function — do not read the fallback number as a
+`₹1 35 000` rental, `server.ts:236`) rather than this function — do not read the fallback number as a
 computation.
 
 ### 2.4 `findings[]` — `AuditFinding`
@@ -178,16 +221,23 @@ computation.
 | `negotiation.firm_ask` | `string` | yes | Firm-tone escalation. |
 | `negotiation.replacement_wording` | `string` | yes | Drop-in clause text. |
 
-**Verification rule (dual anchor, `src/utils/verifier.ts`).** A finding survives only if
-(1) `rule_ref.rule_id ∈ pack.rules[].rule_id`, **and** (2) `verbatim_quote` is located in the contract —
-first as a case-insensitive substring (score `1.0`), else via a two-sentence sliding window with token
-Jaccard `≥ 0.80`. Quotes under 3 tokens are always dropped. Everything else increments
-`dropped_unverified_count`.
+**Verification rule (dual anchor + strict pinning, `src/utils/verifier.ts`).** A finding survives only if all
+of these hold:
 
-> Caveat as shipped in this worktree: `filterVerifiedFindings()` only consults the allow-list when
-> `rule_ref.rule_id` is truthy, so a finding with **no** `rule_ref` at all can still pass. The fail-closed
-> version of this check exists on `main` (commit `32040c9`, `fix(verifier): drop findings with missing
-> rule_ref and pin rule_id strictly`).
+1. **Strict `rule_id` pinning.** When the route passes its allow-list (`allowedRuleIds`, built from the active
+   pack at `server.ts:386`), the finding must carry a **non-empty** `rule_ref.rule_id` that is a member of that
+   set. A finding with **no `rule_ref` at all is dropped**, exactly like one citing an unknown id
+   (`verifier.ts:109-115`) — this is the fail-closed behaviour, it is on `main`, and `/api/audit` always
+   passes an allow-list, so it is enforced in production.
+2. `verbatim_quote` must be a string and carry **≥ 3 tokens** (`verifier.ts:117-128`) — the floor is enforced
+   here as well as inside the matcher, because a 1–2 token quote would otherwise pass via the exact-substring
+   shortcut.
+3. `verbatim_quote` must be located in the contract — first as a case-insensitive substring (score `1.0`), else
+   via a two-sentence sliding window with token Jaccard `≥ 0.80`.
+
+Everything else increments `dropped_unverified_count`. The consequence for clients: a finding you receive is
+always statute-anchored *and* quote-anchored; there is no "unpinned but plausible" category. A high
+`dropped_unverified_count` means the model invented either the citation or the quote.
 
 ---
 
@@ -226,6 +276,22 @@ ok:true, fallback_used:true, reason, audit  → complete audit, use as-is (no pr
 ok:false, error | INVALID_TEXT              → 400, do not hydrate
 ```
 
+Two properties of the success branch worth pinning in any client or eval harness:
+
+- **`findings[]` is already filtered.** The route never returns an unverified finding. Strict pinning means a
+  finding without a resolvable `rule_ref.rule_id` in the active pack is dropped and counted (§2.4), so
+  `findings.length + dropped_unverified_count` is the model's raw claim and `findings.length` is what survived.
+- **`completeness` and `panIndiaOnly` are on this branch.** They are not fallback-only keys, which is what makes
+  the amber gap banner and the pan-India badge work on a live LLM answer rather than on the preset.
+
+### 3.4 `GET /api/health` — the audit-trail surface
+
+`{ status, provider, llmConfigured, sarvamConfigured, injection_defense, prompts[{id, hash}], body_limit,
+sarvam{tts_model, stt_model, stt_mode, tts_max_chars, stt_max_seconds, stt_max_keyterms,
+stt_max_decoded_bytes} }` (`server.ts:281-315`). It reports each prompt's `template_hash` at canonical args
+plus `injection_defense`, so a deploy can be fingerprinted without a model call. `llmConfigured` /
+`sarvamConfigured` are booleans only — no key material is ever returned.
+
 ---
 
 ## 4. `/api/qa` — response contract
@@ -234,7 +300,9 @@ Grounded question answering over the same contract text. Powered by `contract.qa
 
 **Request:** `{ question: string, contract_text: string, language?: 'kn'|'hi'|'ta'|'en' }`. Missing/blank
 `question` or non-string `contract_text` → `400 {error: 'INVALID_QA_INPUT'}`. The prompt fences the contract
-at 28 000 chars and sanitizes the question at 600.
+at 28 000 chars and sanitizes the question at 600. Nothing here is retried against a different answer: the LLM
+timeout + one retry in `server/llmClient.ts` happen *before* verification, and only one generation is ever
+verified.
 
 **The route answers or refuses — it never guesses.** It verifies the model's `verbatim_quote` against
 `contract_text` with the same `verifyQuoteAgainstText()` used by the audit route, then branches.
@@ -244,9 +312,9 @@ at 28 000 chars and sanitizes the question at 600.
 | Key | Type | Notes |
 | --- | --- | --- |
 | `ok` | `true` | |
-| `grounded` | `true` | **New.** The quote resolved in the document. |
-| `prompt_id` | `'contract.qa@1'` | **New on this route** — typed literal. |
-| `template_hash` | `string` | **New on this route** — `cyrb53(systemPrompt)`; changes with language and defence policy. |
+| `grounded` | `true` | The quote resolved in the document. **The only field that distinguishes an answer from a refusal.** |
+| `prompt_id` | `'contract.qa@1'` | Typed literal (`server.ts:525`). |
+| `template_hash` | `string` | `cyrb53(systemPrompt)`; changes with language and defence policy (`server.ts:526`). |
 | `spoken_script` | `string` | Audio-ready, in the requested language. |
 | `answer_en` | `string` | English answer. |
 | `statutory_note` | `string` | Citation or note; may be `''`. |
@@ -254,10 +322,14 @@ at 28 000 chars and sanitizes the question at 600.
 | `clause_id` | `string` | Clause the answer is anchored to (drives scroll + pulse). |
 | `verification` | `{status, char_start, char_end, jaccard}` | Same shape as a finding's `verification`; `status: 'verified'` here. |
 
+**Processing budget:** the contract is fenced at 28 000 chars and the question sanitized at 600
+(`prompts.ts:103`); the call is the `reasoning` tier at temperature 0.15 with the LLM timeout + one retry.
+
 ### 4.2 Refused — unverifiable quote (200, `grounded: false`)
 
 If `verifyQuoteAgainstText()` cannot place the quote (not a substring, Jaccard `< 0.80`, or under 3 tokens)
-the answer is **withheld** and replaced with an explicit refusal (`server.ts:476-490`):
+the answer is **withheld** and replaced with an explicit refusal (`server.ts:506-520`). This is the exact body
+— field-for-field, nothing else is added:
 
 ```json
 {
@@ -281,11 +353,12 @@ re-ask. `statutory_note` and `verbatim_quote` are blanked so nothing from the un
 not something the verifier confirmed, so do not navigate on it.
 
 **Client reality check:** the desktop and mobile Q&A handlers gate on
-`data.ok && !data.fallback_recommended && data.answer_en` (`DesktopWorkspace.tsx:210`,
-`MobileFlow.tsx:202`) and do **not** read `grounded`. Because the refusal body carries an `answer_en` and
+`data.ok && !data.fallback_recommended && data.answer_en` (`DesktopWorkspace.tsx:325`,
+`MobileFlow.tsx:325`) and do **not** read `grounded`. Because the refusal body carries an `answer_en` and
 `ok: true`, the refusal *text* is shown correctly — but the client also treats it as a normal answer and
-scrolls to `clause_id || audit.clauses[0].clause_id`, so a refusal scrolls to the first clause. Consumers
-should branch on `grounded` before doing anything positional.
+scrolls to `clause_id || audit.clauses[0].clause_id`, so a refusal scrolls to the first clause. Consumers should
+branch on `grounded` before doing anything positional. This is the one remaining `/api/qa` contract gap: the
+route refuses correctly, the UI just does not distinguish a refusal from an answer.
 
 ### 4.3 `/api/qa` failure (200)
 
@@ -296,14 +369,18 @@ Non-verification failures (no key, upstream error) return
 
 ## 5. `/api/ocr` — response contract
 
-`contract.ocr@1`, vision tier (`fast`, temperature 0.0). Accepts 1–5 data-URL images but only sends the
-**first 3** to the model.
+`contract.ocr@1`, vision tier (`fast`, temperature 0.0). **1 to 3** data-URL images; more than 3 is a hard
+`400`, not a silent slice (`OCR_MAX_IMAGES = 3`, `server.ts:56`, guard `:324-334`):
+
+```json
+{ "error": "TOO_MANY_IMAGES", "message": "Provide 1 to 3 JPEG data URLs." }
+```
 
 | Key | Type | Notes |
 | --- | --- | --- |
 | `ok` | `boolean` | `true` on a model round-trip, `false` on any failure. |
-| `prompt_id` | `'contract.ocr@1'` | From the central catalog. |
-| `template_hash` | `string` | `cyrb53(systemPrompt)`. |
+| `prompt_id` | `'contract.ocr@1'` | From the central catalog (`server.ts:354`). |
+| `template_hash` | `string` | `cyrb53(systemPrompt)` derived from the rendered OCR prompt (no pack, no language instruction — this template takes no arguments). |
 | `data` | `object` | `{detected_type, detected_jurisdiction, completeness {status, missing_gaps}, clauses[{clause_id, section_label, page_num, text, needs_visual_check_tokens?}]}` as parsed from the model. |
 | `fallback_recommended` | `boolean` | Present on failure: `true`, alongside `error` + a human `message`. |
 
@@ -324,8 +401,8 @@ follows:
 | **findings** | `findings[]` | `findings[]` (verified only) |
 | **clauses** | *(not returned)* | `clauses[]` — inherited from the fallback base |
 | **spoken script** | `findings[].spoken_script` + `summary.walkthrough_intro_spoken` | same; intro is a `Record<LanguageCode, string>` |
-| **completeness** | `completeness` (**now returned**) | `completeness: {status, missing_gaps}` — **still taken from the fallback base**; see the gap note below |
-| **pan-India** | `rule_pack_applied.panIndiaOnly` | `rule_pack_applied.panIndiaOnly?` — added to `AuditResult` so the badge can read it |
+| **completeness** | `completeness` (**returned on success**) | `completeness: {status, missing_gaps}` — **now taken from the payload** (`App.tsx:78`, `:114`) |
+| **pan-India** | `rule_pack_applied.panIndiaOnly` | `rule_pack_applied.panIndiaOnly?` — added to `AuditResult` and rendered as the compliance-bar badge |
 
 Hydration also **recomputes** the band from the score — the server's `risk_band` is not trusted:
 
@@ -336,11 +413,11 @@ else             → 'safe'
 risk_band_label   = `${riskScore} · ${Critical|Caution|Safe}`
 ```
 
-> **Known gap: the client does not yet consume the new `completeness`.** `hydrateAuditFromApiPayload()`
-> (`src/App.tsx:32-86`) destructures `audit`, `summary`, `findings`, `missing_clauses` and
-> `rule_pack_applied`, but not `completeness`. So although the server now sends it on the success path, the
-> rendered banner still reads the preset's `completeness` until the hydrator is extended. Same pattern as
-> `injection_defense`: emitted for the audit trail, not yet surfaced in the UI.
+> **History, resolved: the client used to ignore the new `completeness`.** `hydrateAuditFromApiPayload()`
+> (`src/App.tsx:59-127`) now destructures and applies `payload.completeness` on both branches
+> (`:78` fallback-audit, `:114` partial envelope), so the amber banner reads the server's verdict when the LLM
+> answers. `injection_defense` remains audit-trail-only: it is not rendered anywhere in the UI, and nothing
+> should assume it is.
 
 Full `AuditResult`, for completeness:
 
@@ -348,7 +425,7 @@ Full `AuditResult`, for completeness:
 | --- | --- | --- |
 | `id`, `title`, `subtitle`, `meta_badge`, `category`, `lane` | `string` | fallback (`title` ← request `title`, `lane` ← `'A'` vector / `'B'` photo) |
 | `stamp_header` | `{reg_line, stamp_value, doc_title, doc_subtitle, recitals, stamp_cert_id, stamp_issued, lessor_name, lessee_name}` | fallback |
-| `completeness` | `{status, missing_gaps}` | fallback (API value available but unused, see above) |
+| `completeness` | `{status, missing_gaps}` | payload (`payload.completeness` on success, `payload.audit.completeness` on fallback), else fallback |
 | `pii_masked_tokens` | `Array<{label, masked_preview, status}>` | client (`maskIndianPII`), status ∈ `MASKED \| HASHED \| REDACTED \| VERIFIED LOCAL` |
 | `rule_pack_applied` | `{pack_id, display_name, is_exact_jurisdiction_match, verified_date, match_pct, panIndiaOnly?}` | **API** |
 | `summary` | `{risk_score, risk_band, risk_band_label, rupee_exposure_inr, exposure_caption, breakdown_cards[], alert_banner, top_3_bullets[], walkthrough_intro_spoken, audio_duration_label}` | **API** (band + label recomputed) |
@@ -462,8 +539,8 @@ response — that is the new behaviour; the amber gate now fires on the LLM path
 
 `risk_score: 78` → `risk_band: "critical"`, `risk_band_label: "78 · Critical"`, red band, red `● 78` avatar in
 the vault rail, and the clause cards for `c-8-2` pulsing on selection while the rest dim to `opacity-55`.
-The `missing_pages` gap drives the amber banner only after the hydrator learns to read `payload.completeness`
-(§6 gap note).
+The `missing_pages` gap drives the amber banner directly — the hydrator reads `payload.completeness`
+(`App.tsx:114`).
 
 ---
 
@@ -477,8 +554,8 @@ The `missing_pages` gap drives the amber banner only after the hydrator learns t
    to `fallbackBase.findings`, never render a blank report.
 4. **`summary` may be `undefined`** (unparseable LLM JSON on a 200). `hydrateAuditFromApiPayload` spreads
    `...(payload.summary || {})` and keeps the fallback score.
-5. **`clauses` still never arrive over the wire.** `completeness` now does, but the hydrator does not consume
-   it yet (§6). Do not assume any other fallback-only field has been promoted.
+5. **`clauses` still never arrive over the wire.** `completeness` now does and the hydrator consumes it (§6).
+   Do not assume any other fallback-only field has been promoted.
 6. **`dropped_unverified_count` is telemetry, not an error.** A silent drop is by design: an unverifiable
    quote is worse than a missing finding.
 7. **`template_hash` pairs with `prompt_id`** as the audit trail for any given run; log both. On the audit

@@ -1,115 +1,93 @@
 # Phase Status — verified against the code
 
-Matrix for Phase 0–8. **Status is read off the implementation, not the plan.** Evidence is a file or module
-you can open; where a line number is given it was true at the time of writing.
-
-Baseline: this worktree (`wl/docs` @ `f2917c3`). `main` is 8 commits ahead (`wl/verifier`, `wl/wayout`,
-`wl/desktop`, `wl/tests`); facts that hold **only** on `main` are marked `(main)`.
+Matrix for Phase 0–8. **Status is read off the implementation, not the plan.** Evidence is a file, symbol or
+line you can open. Baseline: `main` @ `b972cff` — a worktree-free checkout, so nothing here is "on a branch but
+not merged". `npm test` → **61 pass / 0 fail** across 5 suites.
 
 | Phase | Status | Evidence |
 | --- | --- | --- |
-| **0 — Contracts, docs & scaffolding** | **Partial** | `docs/audit-result.schema.md`, `DESIGN_SYSTEM.md`, `mock-audit.json`, `vercel.json`, `.env.example`, `rules/schema.json`, `public/manifest.webmanifest` all exist; the planned `api/` and `public/{styles,js,presets,lib}` trees do not — the build is Express (`server.ts`) + Vite/React (`src/`) |
-| **1 — Rule packs & fixtures** | **Partial** | `src/data/rulePacks.ts` — 4 packs, **6 rules total** (3 KA rental, 1 RBI loan, 1 employment, 1 general); `src/data/presets.ts` — 4 presets as TS, not `public/presets/*.json` |
-| **2 — Pure logic + guardrail tests** | **Done** | `src/utils/promptSecurity.ts`, `verifier.ts`, `exposureMath.ts`, `wayOutMath.ts`, `piiGuard.ts`; `npm test` → 5/5 green (14/14 on `main`) |
-| **3 — Backend API** | **Done** | `server.ts` `/api/{health,ocr,audit,qa,tts,stt}`; `server/llmClient.ts` (provider switch, timeout, exactly one retry) |
-| **4 — Dual-lane intake & privacy** | **Partial** | `src/utils/ingest.ts` (Lane A PDF.js, Lane B canvas 1500px/JPEG 0.80, blur verdict) + `src/utils/piiGuard.ts`; **gap:** no `[ILLEGIBLE]` refusal copy, no measured PDF `<150ms` budget |
-| **5 — UI shell & design system** | **Partial** | `src/index.css` (`@theme` tokens, reduced-motion block) + `src/components/{DesktopLanding,DesktopWorkspace,MobileFlow,Modals,DesktopSubViews}.tsx`; **deviations:** 56px bar (not 62px), no SVG sprite, light-only |
-| **6 — Audio, voice Q&A & sync** | **Partial** | `src/utils/audioSync.ts` + `voiceCapture.ts` + Hold-to-Ask wired in both shells; **gap:** the clause playlist (`audioPlaylist.ts`, `onItemStart`) exists only on the unmerged `wl/audio` branch and is imported by nothing |
-| **7 — Negotiate, vault & brief** | **Partial** | `src/utils/pdfBrief.ts` (one-page jsPDF), negotiation builder in `DesktopWorkspace.tsx` / `MobileFlow.tsx`; **gaps:** no "Don't save" toggle, no ~20KB/doc quota, `original_photo_url` base64 is persisted |
-| **8 — Integration, verification & freeze** | **Gap** | `scripts/verify.sh` exists (typecheck + tests + 4 route curls) but **secret-scan gate fails** on doc strings, `ocr`/`stt` are not curled, and no desktop/phone/deploy smoke run is recorded |
+| **0 — Contracts, docs & scaffolding** | **Partial** | `docs/audit-result.schema.md`, `DESIGN_SYSTEM.md`, `mock-audit.json`, `vercel.json`, `.env.example`, `rules/schema.json`, `public/manifest.webmanifest` exist; the planned `api/` and `public/{styles,js,presets,lib}` trees still do not — the build is a monolith `server.ts` + Vite/React `src/` |
+| **1 — Rule packs & fixtures** | **Partial** | `src/data/rulePacks.ts` — 4 packs but only **6 rules** (3 KA rental, 1 RBI loan, 1 employment, 1 general), not the 18 planned; `verified_date` is per pack (`2026-11-21`), not per rule; presets are TS (`src/data/presets.ts`), not `public/presets/*.json` |
+| **2 — Pure logic + guardrail tests** | **Done** | `src/utils/{promptSecurity,verifier,exposureMath,wayOutMath,piiGuard}.ts` + 5 suites (`guardrails` 14, `ingest` 18, `vaultStore` 13, `audioPlaylist` 8, `pdfBrief` 8); `filterVerifiedFindings` now fails closed on a **missing** `rule_ref.rule_id` (`verifier.ts:109-115`) |
+| **3 — Backend API** | **Done** | `server.ts` — 6 routes (`/api/{health,ocr,audit,qa,tts,stt}`), `express.json({limit:'4.5mb'})`, `OCR_MAX_IMAGES=3`, `/api/audit` success path carries `injection_defense` + `completeness` + `panIndiaOnly`; `server/llmClient.ts` timeout + exactly one retry. Caveat: monolith, no `api/`; live LLM/Sarvam calls need funded keys |
+| **4 — Dual-lane intake & privacy** | **Partial** | `src/utils/ingest.ts` — multi-image (`prepareImagesForUpload`, cap 3), real pixel `blackoutHeaderRegion`, blur **fail-closed** gate (`shouldBlockBlurry`, `App.tsx:500`), measured `gateTimingsMs`; `checkSafeToSend` fail-closed before every `fetch`. Gap: no measured PDF `<150ms` budget, `[ILLEGIBLE]` copy is mobile-only |
+| **5 — UI shell & design system** | **Partial** | `src/index.css` `@theme` + reduced-motion block; 900px JS fork (`App.tsx:187`); 48/52 split; pan-India badge (`DesktopWorkspace.tsx:661`). Deviations: **56px** bar (not 62px), **55%** dim (not 18%), light-only, no SVG sprite, no `data-clause-id` anchors (refs + `jumpToClause`) |
+| **6 — Audio, voice Q&A & sync** | **Partial** | Clause playlist **is** wired into both shells: `buildClausePlaylist`/`playClausePlaylist` → `onItemStart` → `jumpToClause` (`DesktopWorkspace.tsx:186-242` scroll+pulse+dim `:1507`), `MobileFlow.tsx:250-277` (scroll + per-item `scrollIntoView`). Gap: mobile has no pulse/dim, only an active-clause highlight |
+| **7 — Negotiate, vault & brief** | **Done** | Negotiate tab + m6 with **WhatsApp *and* Email** channels and `copyText()` `<textarea>` fallback (`DesktopWorkspace.tsx:285-293`, `MobileFlow.tsx:1618-1645`); `pdfBrief.ts` `selectBriefFindings` + `exportBriefPDF` driven by selected asks + tone; vault `vaultStore.ts` caps (~20KB/doc, ~480KB total), never persists images/audio, and honours the per-scan "Don't save" policy (toggle is mobile-only) |
+| **8 — Integration, verification & freeze** | **Partial** | `scripts/verify.sh` — 3 secret gates are now **scoped** (`:(exclude)scripts/verify.sh`, docs, dist, assets) and clean; typecheck + tests + `curl` of 5 routes (`health,audit,qa,tts,stt`). Gaps: `/api/ocr` is not curled, and no desktop/phone/deploy smoke run is recorded |
 
-**Tally: 2 Done (Phases 2, 3) · 6 Partial (Phases 0, 1, 4, 5, 6, 7) · 1 Gap (Phase 8).**
+**Tally: 3 Done (Phases 2, 3, 7) · 6 Partial (Phases 0, 1, 4, 5, 6, 8) · 0 Gap.**
 
 ---
 
 ## Evidence detail
 
 ### Phase 0 — Partial
-- `docs/audit-result.schema.md` — rewritten to cover `injection_defense`, success-path `completeness`,
-  `panIndiaOnly`, deterministic `rupee_exposure_inr`, and the `/api/qa` `grounded` refusal.
-- `DESIGN_SYSTEM.md` — §6.1 (audio-driven pulse), §7.1 (reduced-motion rule), §7.2 (toast **is** `aria-live`),
-  §7.3 (gaps), §8.1 (56px bar, 1.1s × 2 pulse).
-- `mock-audit.json` — 6 clauses, 4 findings, 3 severities, `way_out_params`. Paper fixture only; the app
-  hydrates from `src/data/presets.ts`.
-- Missing: `api/` — superseded by `server.ts`; `public/{styles,js,presets,lib}` — superseded by `src/`.
+`docs/*`, `DESIGN_SYSTEM.md`, `mock-audit.json` (6 clauses / 4 findings / 3 severities), `vercel.json`,
+`.env.example`, `rules/schema.json`, `public/manifest.webmanifest` + icons exist.
+**Missing:** `api/` (superseded by `server.ts`) and `public/{styles,js,presets,lib}` (superseded by `src/`).
 
 ### Phase 1 — Partial
-- `src/data/rulePacks.ts:3` `RULE_PACKS`; `:240` `selectRulePack`; `:267` `validateRulePack`.
-- Rules: `IN_KA_DEPOSIT_CAP`, `IN_KA_RENT_ESCALATION`, `IN_KA_LOCKIN_EXIT`, `IN_RBI_FORECLOSURE_CAP`,
-  `IN_ICA_SEC27_NONCOMPETE`, `IN_GEN_ARBITRATION_NEUTRALITY`.
-- `verified_date` is per **pack** (`'2026-11-21'`), not per rule.
-- `src/data/presets.ts` — `PRESET_BLR_RENTAL`, `PRESET_HDFC_LOAN`, `PRESET_TECHCORP_OFFER`,
-  `PRESET_MISSING_PAGE`; the last encodes the `Clause 4 → 7` gap (`presets.ts:605`).
+`rulePacks.ts:11,105,146,187` → `IN_KA_DEPOSIT_CAP`, `IN_KA_RENT_ESCALATION`, `IN_KA_LOCKIN_EXIT`,
+`IN_RBI_FORECLOSURE_CAP`, `IN_ICA_SEC27_NONCOMPETE`, `IN_GEN_ARBITRATION_NEUTRALITY`. 6 of ~18 planned:
+no KFS/APR/penal-charge cap, no notice symmetry, no bond/clawback, no ESOP lock-in. `validateRulePack()` is a
+structural assertion set (T5), not a JSON-Schema evaluation.
 
 ### Phase 2 — Done
-- `promptSecurity.ts:6` `injectionDefense@1`, `:23` `sanitizeForPrompt`, `:42` `wrapUntrustedContract`,
-  `:47` `escapeHTML` (unused — React escapes), `:76` `parseJSONFromLLMResponse` (4-stage), `:8` `cyrb53`.
-- `verifier.ts:32` `verifyQuoteAgainstText` (substring → 2-sentence Jaccard ≥ 0.80, <3 tokens dropped),
-  `:95` `filterVerifiedFindings`. Fail-closed on a missing `rule_ref.rule_id` is `(main)` @ `32040c9`.
-- `exposureMath.ts:56` `computeRupeeExposure` — integer rupees, exit model is the floor.
-- `wayOutMath.ts:15` `calculateWayOutAtMonth` — rental / loan / employment branches.
-- `piiGuard.ts:81` `maskIndianPII`, `:147` `checkSafeToSend` (unused), `:182` `assertNoPiiLeak` (throws
-  `PII_LEAK`), `:208` `rehydrateParsedObject`.
-- `src/utils/guardrails.test.ts` — T1 PII, T2 injection+JSON, T3 Jaccard, T4 way-out, T5 pack validation.
+`promptSecurity.ts` (`injectionDefense@1` `:6`, `sanitizeForPrompt`, `wrapUntrustedContract`, `cyrb53`,
+4-stage `parseJSONFromLLMResponse`); `verifier.ts` (substring → 2-sentence Jaccard ≥0.80, <3-token floor,
+**strict rule pinning**); `exposureMath.ts:56`; `wayOutMath.ts`; `piiGuard.ts` (`maskIndianPII`,
+`checkSafeToSend`, `assertNoPiiLeak`, `rehydrateParsedObject`).
 
 ### Phase 3 — Done
-- `server.ts:295` `/api/ocr` (`images.slice(0,3)`, `tier:'fast'`), `:337` `/api/audit`, `:439` `/api/qa`,
-  `:514` `/api/tts` (`bulbul:v4-flash`, 500-char cap), `:575` `/api/stt` (`saaras:v4`, codemix, ≤30s,
-  ≤50 keyterms), `:272` `/api/health`.
-- `server/llmClient.ts:28` provider switch, `:35` `MODEL_BY_TIER`, `:137` timeout, `:150` exactly one retry.
-- `src/utils/prompts.ts:17` `PROMPT_IDS` (exactly three), `:88` `buildPrompt` → `{prompt_id, template_hash}`.
-- `/api/audit` extras: `:406` `injection_defense`, `:415` success-path `completeness`, `:413` `panIndiaOnly`,
-  `:384-396` deterministic exposure, `:476-490` `/api/qa` refusal with `grounded:false`.
+`server.ts` route map: `:281 health`, `:318 ocr`, `:367 audit`, `:469 qa`, `:544 tts`, `:605 stt`.
+`BODY_LIMIT='4.5mb'` (`:54`, applied `:279`, echoed by `/api/health`); `OCR_MAX_IMAGES=3` with a `400
+TOO_MANY_IMAGES` beyond it (`:328`); `/api/stt` estimates duration from decoded bytes
+(`SARVAM_STT_BYTES_PER_SECOND * 34`, `:51,643`).
+`/api/audit` success path: `injection_defense` `:436`, `completeness` `:445` (`normaliseCompleteness` `:85`,
+`detectClauseNumberingGap` `:109`), `panIndiaOnly` `:443`, deterministic exposure `:414-426`.
+`/api/qa` refuses with `grounded:false` `:506-520`. `prompts.ts:17,88` is the only route to a model.
+`llmClient.ts:51` `withTimeout`, `:148-155` exactly one retry (missing key fails fast).
 
 ### Phase 4 — Partial
-- `src/utils/ingest.ts:68` `compressImageAndCheckBlur` (1500px, JPEG 0.80, EXIF stripped by re-encode),
-  `:34` `computeSharpnessScore`, `:88` 3-way verdict, `:108` `extractPdfTextLocally` (word-count
-  `isScannableVector`, no `<150ms` budget), `:198,303` concurrency pool (cap 3) — implemented, unused on the
-  one-photo hot path.
-- `MobileFlow.tsx:651-692` 1-tap header blackout toggle.
-- PII shield: `DesktopWorkspace.tsx:505` badge + counts, `Modals.tsx:348-358` token-type popover,
-  `App.tsx:310,386` fail-closed `assertNoPiiLeak` before every outbound `fetch`.
-- Gap UX: `DesktopWorkspace.tsx:558-566` amber completeness banner (desktop only).
-- **Missing:** `[ILLEGIBLE]` refusal copy (the token appears only in the OCR prompt), Lane B honesty badge
-  `(main)`, measured `<150ms` PDF scan budget.
+`ingest.ts:113` `compressImageAndCheckBlur` (1500px, JPEG 0.80, EXIF stripped by re-encode), `:94` verdict,
+`:105` `shouldBlockBlurry` (**fail-closed**: only `'Blurry — Retake Suggested'` blocks), `:273`
+`blackoutHeaderRegion` (real canvas fill, `BLACKOUT_FILL='#111827'`), `:557` `prepareImagesForUpload` (cap 3),
+`:332/356` real stats from measured values, `:383` concurrency cap 3. `App.tsx:335-470` measures each gate
+(`blurMs`, `piiGateMs`, `auditGateMs`, `groundGateMs`) and blocks on `checkSafeToSend`.
+**Gaps:** no measured `<150ms` PDF budget (word-count heuristic, `:153`); `[ILLEGIBLE]` refusal copy ships on
+mobile only (`MobileFlow.tsx:1385-1400`).
 
 ### Phase 5 — Partial
-- `src/index.css` — `@theme` tokens, severity triplets, `:122` pulse, `:127` reduced-motion block.
-- `App.tsx:90,126` 900px JS fork, `:140` `useMobileUI`; `:32-86` `hydrateAuditFromApiPayload`.
-- `DesktopWorkspace.tsx:586,1110` the 48/52 split, gated on Tailwind `lg`.
-- `MobileFlow.tsx:421` 56px app bar; `:1916` 4-tab bottom nav.
-- `public/manifest.webmanifest` + `public/icons/icon-{192,512}.svg`.
-- **Missing:** `data-clause-id` anchors (navigation uses React refs + `jumpToClause`), SVG sprite
-  (Material Symbols ligatures instead), any dark styling.
+`index.css` `@theme` tokens + `.clause-active-pulse` (`:122`) + reduced-motion list (`:127`);
+`MobileFlow.tsx` 56px app bar; `DesktopWorkspace.tsx:1507` `clause-active-pulse` / `opacity-55`.
+**Deviations:** 56px ≠ 62px, 55% ≠ 18%, no SVG sprite (Material Symbols ligatures), no dark styles.
 
 ### Phase 6 — Partial
-- `src/utils/audioSync.ts:30` `playRegionalSpeech` (Sarvam → `speechSynthesis` fallback at `:87`),
-  `:19` `stopAllSpeech`.
-- `src/utils/spokenScript.ts:194,249` `sanitizeSpokenScript` / `validateSpokenScript`.
-- `src/utils/voiceCapture.ts:172` capture (30s cap), `:358` `transcribeAudio`.
-- Hold-to-Ask wiring: `MobileFlow.tsx:246-268`, `DesktopWorkspace.tsx:254-279` → `/api/qa` →
-  `jumpToClause()` → speak. Every play is inside a button handler, so autoplay policy holds.
-- **Missing:** the clause playlist. `src/utils/audioPlaylist.ts` (`buildClausePlaylist`, `playClausePlaylist`,
-  `onItemStart`) exists only on `wl/audio` and no component imports it — so the scroll+pulse+dim sequence is
-  currently triggered per user action (`DesktopWorkspace.tsx:142-155`), not as playback advances.
+`audioPlaylist.ts:48` `buildClausePlaylist`, `:108` `playClausePlaylist` (+ injectable player, `stop()`),
+imported by `DesktopWorkspace.tsx:6` and `MobileFlow.tsx:9`. Desktop `onItemStart` → `jumpToClause` →
+scroll + pulse + dim; mobile `onItemStart` → `setFocusedClauseId` + per-item `scrollIntoView`.
+`audioSync.ts` `playRegionalSpeech` → `speechSynthesis` fallback; `voiceCapture.ts` (30s) → `/api/stt` →
+`/api/qa` → `/api/tts`.
+**Gaps:** mobile drives scroll + highlight per item, not `.clause-active-pulse`/dim; `DESIGN_SYSTEM.md` §6.1/§8
+still says the playlist "is imported by no component" — **that sentence is now stale** (outside this pass's
+edit scope).
 
-### Phase 7 — Partial
-- Negotiation: `DesktopWorkspace.tsx` Negotiate tab (`generatedDraft` memo, Polite/Firm, WhatsApp modal),
-  `MobileFlow.tsx` m6 (+ `mailto:` handoff at `:1361`).
-- `src/utils/pdfBrief.ts:4` `exportOnePageBriefPDF`, invoked from `BriefModal` (`Modals.tsx:177`).
-- Vault: `App.tsx:16` `VAULT_STORAGE_KEY`, `:20` `loadInitialVault`, `:132` persistence effect; UI in
-  `DesktopSubViews.tsx` and `MobileFlow.tsx` m8. Edit tag / note / delete / clear-all all wired.
-- **Missing:** "Don't save" toggle, ~20KB/doc quota, and image exclusion — the whole `AuditResult` is
-  serialised, so a Lane B `original_photo_url` base64 string lands in `localStorage`.
-- **Also missing here (present on `main`):** the `clipboard.ts` `<textarea>` fallback — the module exists but
-  nothing imports it at this commit; buttons call `navigator.clipboard?.writeText(...)` and drop failures.
+### Phase 7 — Done
+`pdfBrief.ts:27` `selectBriefFindings` (selected clause/finding ids → default-selected → all, cap 5) and `:60`
+`exportBriefPDF(audit, {selectedClauseIds, tone})`; callers `DesktopWorkspace.tsx:271-274`,
+`MobileFlow.tsx:1924-1937`, `Modals.tsx:189`. Negotiation: Polite/Firm, WhatsApp modal, **Email** channel
+(`mailto:`) on both shells, `clipboard.ts:10` `copyText` with `execCommand` textarea fallback.
+Vault: `vaultStore.ts:21-22` caps, `:106` `stripVolatileFields` (drops `original_photo_url`/`data:`/8KB+
+fields), `:154` `persistVault` report; `App.tsx:165-170` `vaultSavePolicy`, `:211` `dont_save` early return,
+`:540` reset per intake, mobile toggle `MobileFlow.tsx:868-884` wired from `App.tsx:698`;
+`DesktopSubViews.tsx:48,220` byte accounting + over-budget flag.
+**Gap (deliberate):** the "Don't save" control exists on mobile only — desktop scans always persist — and the
+`:540` reset means the policy does not survive an intake boundary by design.
 
-### Phase 8 — Gap
-- `scripts/verify.sh` — secret scan, `tsc --noEmit`, guardrail tests, then curls `health`, `audit`, `qa`,
-  `tts`. No `ocr`, no `stt`.
-- Secret-scan gate **fails as written**: `git grep -E "sk-ant|sk-or-v1"` matches documentation strings in
-  `public/assets/aistudio/*` and the pattern literal in `scripts/verify.sh:25`. No live key is committed, but
-  the gate needs `:(exclude)` entries before it can go green.
-- Not done and not verifiable from the repo: 7 smoke tests on desktop 1440×900, the same on a physical phone
-  via the QR modal, the resilience passes (network-off preset, provider-down, cached audit), the 2-minute
-  stage-script rehearsal, the 4:15 PM freeze, and the deployed-URL check.
+### Phase 8 — Partial
+`scripts/verify.sh` — secret gates A/B/C scoped with `:(exclude)` entries (re-run manually: no hits),
+`tsc --noEmit`, `npm test`, then `check_route` for `GET /api/health` and `POST /api/{audit,qa,tts,stt}`.
+**Gaps:** `/api/ocr` is not curled (6 routes exposed, 5 exercised); 7 smoke tests on desktop 1440×900, the
+phone-via-QR run, the resilience passes, the 2-minute rehearsal, the 4:15 PM freeze and the deployed-URL check
+are all unrecorded in the repo.
