@@ -106,8 +106,8 @@ async function callLLMChat(params: {
 
   const model =
     params.tier === 'fast'
-      ? 'anthropic/claude-3.5-haiku'
-      : 'anthropic/claude-3.5-sonnet';
+      ? 'anthropic/claude-haiku-5.5'
+      : 'anthropic/claude-sonnet-5.5';
 
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
