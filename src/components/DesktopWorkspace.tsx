@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { AuditResult, ContractClause, LanguageCode, VaultDocument } from '../types/contract';
+import type { AuditFinding, AuditResult, ContractClause, LanguageCode, VaultDocument } from '../types/contract';
 import { calculateWayOutAtMonth } from '../utils/wayOutMath';
 import { ORIGINAL_SCAN_DEMO_URL } from '../utils/ingest';
 import { playRegionalSpeech, stopAllSpeech } from '../utils/audioSync';
+import { buildClausePlaylist, playClausePlaylist } from '../utils/audioPlaylist';
+import type { PlaylistController, PlaylistItem } from '../utils/audioPlaylist';
 import { copyText } from '../utils/clipboard';
 import {
   MIN_VOICE_CAPTURE_MS,
@@ -25,6 +27,9 @@ interface DesktopWorkspaceProps {
   onSaveNote: (text: string, tag?: string) => void;
   onToast: (msg: string) => void;
 }
+
+/** `.clause-active-pulse` runs 1.1s × 2 = 2.2s; clear just after it settles. */
+const ACTIVE_CLAUSE_CLEAR_MS = 2300;
 
 const LANG_DISPLAY: Record<LanguageCode, { native: string; label: string; speaker: string }> = {
   kn: { native: 'ಕನ್ನಡ', label: 'Kannada', speaker: 'Kannada Audio Synced' },
@@ -79,6 +84,10 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioSpeed, setAudioSpeed] = useState<number>(1.0);
   const [playingCaption, setPlayingCaption] = useState<string>(audit.summary.audio_duration_label);
+  /** `'walkthrough'`, a finding id, or null — which playlist (if any) owns playback. */
+  const [playingTarget, setPlayingTarget] = useState<string | null>(null);
+  const playlistControllerRef = useRef<PlaylistController | null>(null);
+  const activeClauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Private notes state
   const [noteInput, setNoteInput] = useState('');
@@ -141,9 +150,17 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
 
   const activeDraft = customDraftOverride !== null ? customDraftOverride : generatedDraft;
 
+  const clearActiveClauseTimer = () => {
+    if (activeClauseTimerRef.current !== null) {
+      clearTimeout(activeClauseTimerRef.current);
+      activeClauseTimerRef.current = null;
+    }
+  };
+
   const jumpToClause = (clauseId: string) => {
     setSheetView('reconstructed');
     if (layoutMode === 'report') setLayoutMode('split');
+    clearActiveClauseTimer();
     setActiveClauseId(clauseId);
     setTimeout(() => {
       const el = clauseRefs.current[clauseId];
@@ -151,17 +168,91 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 60);
-    setTimeout(() => {
+    activeClauseTimerRef.current = setTimeout(() => {
+      activeClauseTimerRef.current = null;
       setActiveClauseId((curr) => (curr === clauseId ? null : curr));
-    }, 2600);
+    }, ACTIVE_CLAUSE_CLEAR_MS);
+  };
+
+  const stopWalkthrough = () => {
+    playlistControllerRef.current?.stop();
+    playlistControllerRef.current = null;
+    setPlayingTarget(null);
+    setIsPlayingAudio(false);
+    clearActiveClauseTimer();
+    setActiveClauseId(null);
+  };
+
+  /** Play a clause playlist; each item drives the sheet's scroll / pulse / dim. */
+  const playPlaylist = (items: PlaylistItem[], label: string) => {
+    stopWalkthrough();
+    if (items.length === 0) {
+      onToast('No spoken walkthrough available for this contract.');
+      return;
+    }
+    setPlayingTarget(label);
+    setIsPlayingAudio(true);
+    setPlayingCaption(audit.summary.audio_duration_label);
+    playlistControllerRef.current = playClausePlaylist(items, language, {
+      onItemStart: (item: PlaylistItem) => {
+        setIsPlayingAudio(true);
+        if (item.kind === 'clause' && item.clauseId) {
+          jumpToClause(item.clauseId);
+          const finding = audit.findings.find((f) => f.finding_id === item.findingId);
+          if (finding) setPlayingCaption(finding.headline);
+        } else {
+          setPlayingCaption(audit.summary.audio_duration_label);
+        }
+      },
+      onComplete: () => {
+        playlistControllerRef.current = null;
+        setPlayingTarget(null);
+        setIsPlayingAudio(false);
+        setPlayingCaption(audit.summary.audio_duration_label);
+        clearActiveClauseTimer();
+        activeClauseTimerRef.current = setTimeout(() => {
+          activeClauseTimerRef.current = null;
+          setActiveClauseId(null);
+        }, ACTIVE_CLAUSE_CLEAR_MS);
+      },
+      onFallback: () => {},
+    });
+  };
+
+  const startWalkthrough = () =>
+    playPlaylist(
+      buildClausePlaylist(audit.summary.walkthrough_intro_spoken[language], audit.findings, language),
+      'walkthrough',
+    );
+
+  const handleWalkthroughToggle = () => {
+    if (isPlayingAudio && playingTarget === 'walkthrough') {
+      stopWalkthrough();
+      return;
+    }
+    startWalkthrough();
+  };
+
+  const handleListenFinding = (finding: AuditFinding) => {
+    if (isPlayingAudio && playingTarget === finding.finding_id) {
+      stopWalkthrough();
+      return;
+    }
+    playPlaylist(buildClausePlaylist('', [finding], language), finding.finding_id);
   };
 
   const handlePlaySpeech = async (text: string, label?: string) => {
     if (isPlayingAudio && (!label || playingCaption === label)) {
       stopAllSpeech();
+      playlistControllerRef.current?.stop();
+      playlistControllerRef.current = null;
+      setPlayingTarget(null);
       setIsPlayingAudio(false);
       return;
     }
+    playlistControllerRef.current?.stop();
+    playlistControllerRef.current = null;
+    setPlayingTarget(null);
     setPlayingCaption(label || audit.summary.audio_duration_label);
     await playRegionalSpeech(text, language, audioSpeed, {
       onStart: () => setIsPlayingAudio(true),
@@ -174,6 +265,13 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
     const next = audioSpeed === 1.0 ? 1.25 : audioSpeed === 1.25 ? 1.5 : 1.0;
     setAudioSpeed(next);
     onToast(`Audio playback speed set to ${next}x`);
+  };
+
+  const handleOpenBrief = () => {
+    const selectedClauseIds = audit.findings
+      .filter((f) => selectedFindingIds.includes(f.finding_id))
+      .map((f) => f.clause_id);
+    onOpenBriefModal({ selectedClauseIds, tone });
   };
 
   const handleToggleFinding = (findingId: string) => {
@@ -284,6 +382,9 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
     });
     const spoken = entry.answerNative || entry.answerEn;
     if (spoken) {
+      playlistControllerRef.current?.stop();
+      playlistControllerRef.current = null;
+      setPlayingTarget(null);
       setPlayingCaption('Q&A Answer');
       setIsPlayingAudio(true);
       await playRegionalSpeech(spoken, language, audioSpeed, {
@@ -380,6 +481,19 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
     [],
   );
 
+  // Silence the clause playlist and drop its pending clause-reset timer on unmount.
+  useEffect(
+    () => () => {
+      playlistControllerRef.current?.stop();
+      playlistControllerRef.current = null;
+      if (activeClauseTimerRef.current !== null) {
+        clearTimeout(activeClauseTimerRef.current);
+        activeClauseTimerRef.current = null;
+      }
+    },
+    [],
+  );
+
   const langInfo = LANG_DISPLAY[language];
   const isCritical = audit.summary.risk_band === 'critical';
   const isSafe = audit.summary.risk_band === 'safe';
@@ -394,6 +508,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
             <button
               type="button"
               onClick={() => {
+                stopWalkthrough();
                 stopAllSpeech();
                 onBackHome();
               }}
@@ -477,7 +592,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
 
             <button
               type="button"
-              onClick={() => onOpenBriefModal()}
+              onClick={handleOpenBrief}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant/50 bg-white text-on-surface hover:bg-surface-container-low text-xs font-semibold whitespace-nowrap cursor-pointer"
             >
               <Icon name="summarize" className="text-[16px] text-primary-container" />
@@ -552,10 +667,13 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
 
               <button
                 type="button"
-                onClick={() => handlePlaySpeech(audit.summary.walkthrough_intro_spoken[language], langInfo.speaker)}
+                onClick={handleWalkthroughToggle}
                 className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-outline-variant/40 text-[11px] font-semibold text-on-surface hover:border-primary-container transition-colors cursor-pointer whitespace-nowrap"
               >
-                <Icon name="headphones" className="text-[14px] text-primary-container" />
+                <Icon
+                  name={isPlayingAudio && playingTarget === 'walkthrough' ? 'stop' : 'headphones'}
+                  className="text-[14px] text-primary-container"
+                />
                 <span>
                   {langInfo.native} ({langInfo.speaker})
                 </span>
@@ -890,10 +1008,13 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
 
                             <button
                               type="button"
-                              onClick={() => handlePlaySpeech(f.spoken_script, f.headline)}
+                              onClick={() => handleListenFinding(f)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface text-[11px] font-semibold cursor-pointer"
                             >
-                              <Icon name="volume_up" className="text-[14px] text-primary-container" />
+                              <Icon
+                                name={isPlayingAudio && playingTarget === f.finding_id ? 'stop' : 'volume_up'}
+                                className="text-[14px] text-primary-container"
+                              />
                               <span>Listen {langInfo.label} Audio</span>
                             </button>
                           </div>
@@ -1090,10 +1211,10 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                       </span>
                       <button
                         type="button"
-                        onClick={() => handlePlaySpeech(audit.summary.walkthrough_intro_spoken[language])}
+                        onClick={handleWalkthroughToggle}
                         className="px-3 py-1 rounded-lg bg-primary-container text-white text-[11px] font-bold cursor-pointer"
                       >
-                        {isPlayingAudio ? 'Stop Audio' : `Play ${langInfo.label}`}
+                        {isPlayingAudio && playingTarget === 'walkthrough' ? 'Stop Audio' : `Play ${langInfo.label}`}
                       </button>
                     </div>
                     <p className="text-xs text-on-surface leading-relaxed bg-white p-3 rounded-xl border border-outline-variant/30">
@@ -1154,11 +1275,26 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
               <div className="flex items-center gap-3 min-w-0">
                 <button
                   type="button"
-                  onClick={() => handlePlaySpeech(audit.summary.walkthrough_intro_spoken[language])}
-                  aria-label={isPlayingAudio ? 'Pause audio walkthrough' : 'Play audio walkthrough'}
+                  onClick={handleWalkthroughToggle}
+                  aria-label={
+                    isPlayingAudio && playingTarget === 'walkthrough' ? 'Stop audio walkthrough' : 'Play audio walkthrough'
+                  }
                   className="w-8 h-8 rounded-full bg-primary-container text-white flex items-center justify-center shrink-0 cursor-pointer hover:opacity-90"
                 >
-                  <Icon name={isPlayingAudio ? 'pause' : 'play_arrow'} className="text-[18px]" filled />
+                  <Icon
+                    name={isPlayingAudio && playingTarget === 'walkthrough' ? 'pause' : 'play_arrow'}
+                    className="text-[18px]"
+                    filled
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={stopWalkthrough}
+                  disabled={!isPlayingAudio}
+                  aria-label="Stop audio walkthrough"
+                  className="w-8 h-8 rounded-full bg-surface-container text-on-surface flex items-center justify-center shrink-0 cursor-pointer hover:bg-surface-container-high disabled:opacity-40 disabled:cursor-default"
+                >
+                  <Icon name="stop" className="text-[16px]" filled />
                 </button>
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-on-surface block truncate">
