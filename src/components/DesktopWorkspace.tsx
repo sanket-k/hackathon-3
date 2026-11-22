@@ -1,8 +1,14 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuditResult, ContractClause, LanguageCode, VaultDocument } from '../types/contract';
 import { calculateWayOutAtMonth } from '../utils/wayOutMath';
 import { ORIGINAL_SCAN_DEMO_URL } from '../utils/ingest';
 import { playRegionalSpeech, stopAllSpeech } from '../utils/audioSync';
+import {
+  MIN_VOICE_CAPTURE_MS,
+  startVoiceCapture,
+  transcribeAudio,
+  type VoiceCaptureHandle,
+} from '../utils/voiceCapture';
 import { Icon } from './Icons';
 
 interface DesktopWorkspaceProps {
@@ -25,6 +31,15 @@ const LANG_DISPLAY: Record<LanguageCode, { native: string; label: string; speake
   ta: { native: 'தமிழ்', label: 'Tamil', speaker: 'Tamil Audio Synced' },
   en: { native: 'EN', label: 'English', speaker: 'English Audio Synced' },
 };
+
+interface QaHistoryEntry {
+  question: string;
+  answerNative: string;
+  answerEn: string;
+  statutoryNote: string;
+  clauseId: string;
+  excerpt: string;
+}
 
 export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
   audit,
@@ -70,16 +85,16 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
   const [qaOpen, setQaOpen] = useState(false);
   const [qaQuestion, setQaQuestion] = useState('');
   const [qaLoading, setQaLoading] = useState(false);
-  const [qaHistory, setQaHistory] = useState<
-    Array<{
-      question: string;
-      answerNative: string;
-      answerEn: string;
-      statutoryNote: string;
-      clauseId: string;
-      excerpt: string;
-    }>
-  >(() =>
+  // Real Hold-to-Ask capture: idle → requesting (mic opening) → recording → transcribing → answering
+  const [voiceStage, setVoiceStage] = useState<'idle' | 'requesting' | 'recording' | 'transcribing' | 'answering'>(
+    'idle',
+  );
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const voiceHandleRef = useRef<VoiceCaptureHandle | null>(null);
+  const voiceFailedRef = useRef(false);
+  const voicePressActiveRef = useRef(false);
+  const voiceAnswerRef = useRef<HTMLDivElement | null>(null);
+  const [qaHistory, setQaHistory] = useState<QaHistoryEntry[]>(() =>
     audit.qa_presets.slice(0, 1).map((q) => ({
       question: q.question_native || q.question_en,
       answerNative: q.answer_native,
@@ -166,9 +181,9 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
     );
   };
 
-  const handleAskQuestion = async (qText: string) => {
+  const handleAskQuestion = async (qText: string): Promise<QaHistoryEntry | null> => {
     const trimmed = qText.trim();
-    if (!trimmed) return;
+    if (!trimmed) return null;
     setQaQuestion('');
     setQaLoading(true);
     const fullContractText = audit.clauses.map((c) => `${c.section_label}: ${c.text}`).join('\n\n');
@@ -193,18 +208,16 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
           verbatim_quote?: string;
         };
         if (data.ok && !data.fallback_recommended && data.answer_en) {
-          setQaHistory((prev) => [
-            ...prev,
-            {
-              question: trimmed,
-              answerNative: data.spoken_script || data.answer_en || '',
-              answerEn: data.answer_en || '',
-              statutoryNote: data.statutory_note || audit.rule_pack_applied.display_name,
-              clauseId: data.clause_id || audit.clauses[0]?.clause_id || 'clause-4-2',
-              excerpt: data.verbatim_quote || audit.clauses[0]?.text || '',
-            },
-          ]);
-          return;
+          const entry: QaHistoryEntry = {
+            question: trimmed,
+            answerNative: data.spoken_script || data.answer_en || '',
+            answerEn: data.answer_en || '',
+            statutoryNote: data.statutory_note || audit.rule_pack_applied.display_name,
+            clauseId: data.clause_id || audit.clauses[0]?.clause_id || 'clause-4-2',
+            excerpt: data.verbatim_quote || audit.clauses[0]?.text || '',
+          };
+          setQaHistory((prev) => [...prev, entry]);
+          return entry;
         }
       }
       throw new Error('Fallback to grounded preset Q&A');
@@ -214,21 +227,141 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
         audit.qa_presets.find((p) =>
           p.chip.toLowerCase().split(/\s+/).some((w) => w.length > 3 && lower.includes(w)),
         ) || audit.qa_presets[0];
-      setQaHistory((prev) => [
-        ...prev,
-        {
-          question: trimmed,
-          answerNative: presetMatch?.answer_native || audit.findings[0]?.spoken_script || 'Clause reviewed.',
-          answerEn: presetMatch?.answer_en || audit.findings[0]?.plain_explanation || 'See highlighted clauses.',
-          statutoryNote: presetMatch?.statutory_note || audit.rule_pack_applied.display_name,
-          clauseId: presetMatch?.clause_id || audit.clauses[0]?.clause_id || 'clause-4-2',
-          excerpt: presetMatch?.excerpt || audit.clauses[0]?.text || '',
-        },
-      ]);
+      const entry: QaHistoryEntry = {
+        question: trimmed,
+        answerNative: presetMatch?.answer_native || audit.findings[0]?.spoken_script || 'Clause reviewed.',
+        answerEn: presetMatch?.answer_en || audit.findings[0]?.plain_explanation || 'See highlighted clauses.',
+        statutoryNote: presetMatch?.statutory_note || audit.rule_pack_applied.display_name,
+        clauseId: presetMatch?.clause_id || audit.clauses[0]?.clause_id || 'clause-4-2',
+        excerpt: presetMatch?.excerpt || audit.clauses[0]?.text || '',
+      };
+      setQaHistory((prev) => [...prev, entry]);
+      return entry;
     } finally {
       setQaLoading(false);
     }
   };
+
+  /** Existing tap-a-sample behaviour, kept as the graceful path when voice is unusable. */
+  const sampleQuestion = audit.qa_presets[0]?.question_en || audit.qa_presets[0]?.chip || '';
+
+  const fallbackToSampleQuestion = () => {
+    onToast('Voice unavailable — pick a sample question');
+    if (sampleQuestion) void handleAskQuestion(sampleQuestion);
+  };
+
+  /** POST /api/qa → show the answer card → scroll/highlight the grounded clause → speak the script. */
+  const answerVoiceTranscript = async (transcript: string) => {
+    setVoiceStage('answering');
+    setQaOpen(true);
+    const entry = await handleAskQuestion(transcript);
+    if (!entry) {
+      setVoiceStage('idle');
+      fallbackToSampleQuestion();
+      return;
+    }
+    jumpToClause(entry.clauseId);
+    setVoiceStage('idle');
+    window.requestAnimationFrame(() => {
+      voiceAnswerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    const spoken = entry.answerNative || entry.answerEn;
+    if (spoken) {
+      setPlayingCaption('Q&A Answer');
+      setIsPlayingAudio(true);
+      await playRegionalSpeech(spoken, language, audioSpeed, {
+        onStart: () => setIsPlayingAudio(true),
+        onEnd: () => setIsPlayingAudio(false),
+        onFallback: () => {},
+      });
+      setIsPlayingAudio(false);
+    }
+  };
+
+  const handleVoicePressStart = async (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (voiceStage !== 'idle') return;
+    voiceFailedRef.current = false;
+    voicePressActiveRef.current = true;
+    setVoiceTranscript('');
+    setVoiceStage('requesting');
+    try {
+      const handle = await startVoiceCapture({ maxDurationMs: 30_000 });
+      // Released (or cancelled) before the mic permission resolved — do not keep recording.
+      if (!voicePressActiveRef.current) {
+        handle.cancel();
+        handle.cleanup();
+        setVoiceStage('idle');
+        return;
+      }
+      voiceHandleRef.current = handle;
+      setVoiceStage('recording');
+    } catch {
+      voiceHandleRef.current = null;
+      voiceFailedRef.current = true;
+      setVoiceStage('idle');
+    }
+  };
+
+  const handleVoicePressEnd = async () => {
+    voicePressActiveRef.current = false;
+    if (voiceFailedRef.current) {
+      voiceFailedRef.current = false;
+      setVoiceStage('idle');
+      fallbackToSampleQuestion();
+      return;
+    }
+
+    const handle = voiceHandleRef.current;
+    voiceHandleRef.current = null;
+    if (!handle) return;
+
+    try {
+      const capture = await handle.stop();
+      handle.cleanup();
+
+      // A quick tap (no held speech) keeps the existing tap-a-sample behaviour.
+      if (capture.durationMs < MIN_VOICE_CAPTURE_MS) {
+        setVoiceStage('idle');
+        if (sampleQuestion) void handleAskQuestion(sampleQuestion);
+        return;
+      }
+
+      setVoiceStage('transcribing');
+      const stt = await transcribeAudio(capture.dataUrl, language);
+      if (!stt.ok || !stt.transcript) throw new Error(stt.reason || 'STT unavailable');
+
+      setVoiceTranscript(stt.transcript);
+      await answerVoiceTranscript(stt.transcript);
+    } catch {
+      setVoiceStage('idle');
+      fallbackToSampleQuestion();
+    }
+  };
+
+  const handleVoicePressCancel = () => {
+    voicePressActiveRef.current = false;
+    const handle = voiceHandleRef.current;
+    voiceHandleRef.current = null;
+    if (handle) {
+      handle.cancel();
+      handle.cleanup();
+    }
+    voiceFailedRef.current = false;
+    setVoiceStage((stage) =>
+      stage === 'recording' || stage === 'requesting' || stage === 'transcribing' ? 'idle' : stage,
+    );
+  };
+
+  // Release the mic if the component unmounts mid-recording.
+  useEffect(
+    () => () => {
+      voiceHandleRef.current?.cancel();
+      voiceHandleRef.current?.cleanup();
+      voiceHandleRef.current = null;
+    },
+    [],
+  );
 
   const langInfo = LANG_DISPLAY[language];
   const isCritical = audit.summary.risk_band === 'critical';
@@ -1321,7 +1454,15 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                     <p className="font-semibold text-on-surface">&ldquo;{item.question}&rdquo;</p>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-white border border-primary-container/25 text-xs space-y-2">
+                  <div
+                    ref={idx === qaHistory.length - 1 ? voiceAnswerRef : undefined}
+                    className={`p-3 rounded-xl bg-white border text-xs space-y-2 transition-shadow ${
+                      idx === qaHistory.length - 1 &&
+                      (voiceStage === 'answering' || voiceStage === 'transcribing')
+                        ? 'border-primary-container/60 shadow-md animate-pulse'
+                        : 'border-primary-container/25'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold uppercase text-emerald-700">
                         ✓ Grounded Answer
@@ -1362,7 +1503,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
               )}
             </div>
 
-            {/* Preset Chips + Form */}
+            {/* Preset Chips + Hold-to-Ask + Form */}
             <div className="p-3 bg-white border-t border-outline-variant/40 space-y-2">
               <div className="flex flex-wrap gap-1.5">
                 {audit.qa_presets.slice(0, 2).map((chip) => (
@@ -1376,10 +1517,73 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                   </button>
                 ))}
               </div>
+
+              {/* Hold-to-Ask: press → record → release → STT → QA → spoken answer */}
+              <div className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-2.5 py-2">
+                <button
+                  type="button"
+                  onPointerDown={handleVoicePressStart}
+                  onPointerUp={() => {
+                    void handleVoicePressEnd();
+                  }}
+                  onPointerLeave={() => {
+                    if (voiceStage === 'recording' || voiceStage === 'requesting') void handleVoicePressEnd();
+                  }}
+                  onPointerCancel={handleVoicePressCancel}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (sampleQuestion) void handleAskQuestion(sampleQuestion);
+                    }
+                  }}
+                  disabled={voiceStage === 'transcribing' || voiceStage === 'answering'}
+                  aria-label="Hold to Ask voice question"
+                  aria-pressed={voiceStage === 'recording'}
+                  title="Hold to ask by voice (max 30s)"
+                  className={`w-9 h-9 shrink-0 rounded-full text-white flex items-center justify-center cursor-pointer select-none touch-none transition-all disabled:opacity-60 disabled:cursor-wait ${
+                    voiceStage === 'recording'
+                      ? 'bg-error ring-4 ring-red-300 scale-105'
+                      : voiceStage === 'requesting' || voiceStage === 'transcribing' || voiceStage === 'answering'
+                        ? 'bg-primary-container ring-4 ring-blue-200 animate-pulse'
+                        : 'bg-primary-container hover:opacity-95'
+                  }`}
+                >
+                  <Icon
+                    name={voiceStage === 'recording' ? 'graphic_eq' : 'mic'}
+                    className="text-[18px]"
+                    filled={voiceStage === 'recording'}
+                  />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[11px] font-bold text-on-surface block truncate">
+                    {voiceStage === 'requesting'
+                      ? 'Opening microphone…'
+                      : voiceStage === 'recording'
+                        ? 'Recording… release to ask'
+                        : voiceStage === 'transcribing'
+                          ? 'Transcribing your question…'
+                          : voiceStage === 'answering'
+                            ? 'Verifying against clauses…'
+                            : 'Hold to Ask (or tap a sample)'}
+                  </span>
+                  <span className="text-[10px] text-on-surface-variant block truncate">
+                    {voiceStage === 'recording'
+                      ? 'Speak now — auto-stops at 30s'
+                      : voiceTranscript
+                        ? `Heard: “${voiceTranscript}”`
+                        : `${langInfo.label} voice • 30s max`}
+                  </span>
+                </div>
+                {voiceStage === 'recording' && (
+                  <span className="w-2 h-2 rounded-full bg-error animate-pulse shrink-0" />
+                )}
+              </div>
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleAskQuestion(qaQuestion);
+                  void handleAskQuestion(qaQuestion);
                 }}
                 className="flex gap-2"
               >
