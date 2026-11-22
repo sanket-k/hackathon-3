@@ -86,6 +86,7 @@ export const DesktopSubViews: React.FC<DesktopSubViewsProps> = ({
                   key={key}
                   type="button"
                   onClick={() => onNavigate(key)}
+                  aria-current={view === key ? 'page' : undefined}
                   className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                     view === key
                       ? 'bg-surface-container-high text-on-surface'

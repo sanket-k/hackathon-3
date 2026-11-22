@@ -8,6 +8,7 @@ import { calculateWayOutAtMonth } from '../utils/wayOutMath';
 import { playRegionalSpeech, stopAllSpeech } from '../utils/audioSync';
 import { buildClausePlaylist, playClausePlaylist } from '../utils/audioPlaylist';
 import { copyText } from '../utils/clipboard';
+import { scrollBehavior } from '../utils/motionPref';
 import {
   MIN_VOICE_CAPTURE_MS,
   startVoiceCapture,
@@ -15,6 +16,14 @@ import {
   type VoiceCaptureHandle,
 } from '../utils/voiceCapture';
 import { Icon } from './Icons';
+
+/** Severity chip tones. Three branches — a `safe` finding must not render amber. */
+const severityChipTone = (severity: 'critical' | 'caution' | 'safe'): string =>
+  severity === 'critical'
+    ? 'bg-red-100 text-error'
+    : severity === 'caution'
+      ? 'bg-amber-100 text-amber-800'
+      : 'bg-emerald-100 text-emerald-800';
 
 export type MobileScreen =
   | 'm1_analyze'
@@ -265,7 +274,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
         if (item.kind !== 'clause' || !item.clauseId) return;
         setFocusedClauseId(item.clauseId);
         const node = clauseRefs.current[item.clauseId];
-        node?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+        node?.scrollIntoView?.({ behavior: scrollBehavior(), block: 'center' });
       },
       onComplete: () => {
         playlistRef.current = null;
@@ -377,7 +386,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
     setFocusedClauseId(answer.clause_id);
     setVoiceStage('idle');
     window.requestAnimationFrame(() => {
-      voiceAnswerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      voiceAnswerRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
     });
     const spoken = answer.answer_native || answer.answer_en;
     if (spoken) {
@@ -846,7 +855,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                       className="sr-only peer"
                       aria-label="1-Tap Privacy Blackout"
                     />
-                    <div className="w-12 h-7 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-[22px] after:w-[22px] after:transition-all peer-checked:bg-primary-container" />
+                    <div className="w-12 h-7 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-[22px] after:w-[22px] after:transition-all peer-checked:bg-primary-container peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-container" />
                   </label>
                 </div>
 
@@ -877,7 +886,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                       type="checkbox"
                       checked={vaultSavePolicy === 'dont_save'}
                       onChange={(e) => onSetVaultSavePolicy(e.target.checked ? 'dont_save' : 'save')}
-                      className="w-5 h-5 accent-[#1d4ed8] shrink-0 cursor-pointer"
+                      className="w-5 h-5 accent-primary-container shrink-0 cursor-pointer"
                       aria-label="Do not save this scan to the local vault"
                     />
                   </label>
@@ -1108,7 +1117,9 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 <div>
                   <p className="text-xs font-bold text-on-surface">{audit.title.split(' • ')[0]}</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-error">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${severityChipTone(audit.summary.risk_band)}`}
+                    >
                       {audit.summary.risk_band_label}
                     </span>
                     <span className="text-[11px] text-on-surface-variant">{audit.meta_badge}</span>
@@ -1203,6 +1214,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     value={wayOutMonth}
                     onChange={(e) => setWayOutMonth(Number(e.target.value))}
                     aria-label="Mobile Way Out Slider"
+                    aria-valuetext={`Month ${wayOutMonth}: ${wayOut.headline}`}
                     className="w-full accent-primary-container"
                   />
                   <div className="p-2.5 rounded-xl bg-surface-container-low text-xs font-semibold text-on-surface">
@@ -1226,9 +1238,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                            f.severity === 'critical' ? 'bg-red-100 text-error' : 'bg-amber-100 text-amber-800'
-                          }`}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${severityChipTone(f.severity)}`}
                         >
                           {f.severity}
                         </span>
@@ -1292,8 +1302,10 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 >
                   ← Back to Report
                 </button>
-                <span className="px-2.5 py-1 rounded-full bg-red-100 text-error text-[11px] font-bold">
-                  Critical Risk
+                <span
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${severityChipTone(audit.summary.risk_band)}`}
+                >
+                  {audit.summary.risk_band_label}
                 </span>
               </div>
 
@@ -1349,9 +1361,13 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                           ref={(el) => {
                             clauseRefs.current[c.clause_id] = el;
                           }}
+                          role="article"
+                          tabIndex={0}
+                          aria-label={c.section_label}
+                          aria-current={c.clause_id === focusedClauseId ? 'true' : undefined}
                           className={
                             active
-                              ? 'rounded-xl border-l-4 border-error bg-red-50/50 p-3.5 space-y-1.5'
+                              ? 'rounded-xl border-l-4 border-error bg-red-50/50 p-3.5 space-y-1.5 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-primary-container'
                               : 'text-on-surface-variant'
                           }
                         >
@@ -1517,11 +1533,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                             {idx + 1}. {f.negotiation.short_title}
                           </span>
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                              f.severity === 'critical'
-                                ? 'bg-red-100 text-error'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}
+                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${severityChipTone(f.severity)}`}
                           >
                             {f.negotiation.impact_badge}
                           </span>
@@ -2006,7 +2018,9 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 <div className="rounded-2xl bg-white border-2 border-primary-container/30 p-4 space-y-3">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-primary-container uppercase">● Currently Inspected</span>
-                    <span className="px-2 py-0.5 rounded bg-red-100 text-error font-bold">
+                    <span
+                      className={`px-2 py-0.5 rounded font-bold ${severityChipTone(activeVaultDoc.audit.summary.risk_band)}`}
+                    >
                       {activeVaultDoc.audit.summary.risk_band_label}
                     </span>
                   </div>
@@ -2222,6 +2236,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                   key={target}
                   type="button"
                   onClick={() => onNavigate(target)}
+                  aria-current={active ? 'page' : undefined}
                   className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold cursor-pointer ${
                     active ? 'text-primary-container bg-surface-container-low' : 'text-on-surface-variant'
                   }`}

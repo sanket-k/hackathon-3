@@ -6,6 +6,7 @@ import { playRegionalSpeech, stopAllSpeech } from '../utils/audioSync';
 import { buildClausePlaylist, playClausePlaylist } from '../utils/audioPlaylist';
 import type { PlaylistController, PlaylistItem } from '../utils/audioPlaylist';
 import { copyText } from '../utils/clipboard';
+import { scrollBehavior } from '../utils/motionPref';
 import {
   MIN_VOICE_CAPTURE_MS,
   startVoiceCapture,
@@ -165,7 +166,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
     setTimeout(() => {
       const el = clauseRefs.current[clauseId];
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.scrollIntoView({ behavior: scrollBehavior(), block: 'center' });
       }
     }, 60);
     activeClauseTimerRef.current = setTimeout(() => {
@@ -378,7 +379,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
     jumpToClause(entry.clauseId);
     setVoiceStage('idle');
     window.requestAnimationFrame(() => {
-      voiceAnswerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      voiceAnswerRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'nearest' });
     });
     const spoken = entry.answerNative || entry.answerEn;
     if (spoken) {
@@ -569,7 +570,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
 
           {/* Center-Right: Mode Toggle + Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden lg:flex items-center p-1 rounded-xl bg-surface-container border border-outline-variant/40">
+            <div className="flex items-center p-1 rounded-xl bg-surface-container border border-outline-variant/40">
               {(['report', 'split', 'scan'] as const).map((mode) => (
                 <button
                   key={mode}
@@ -738,7 +739,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
         {layoutMode !== 'scan' && (
           <section
             className={`${
-              layoutMode === 'split' ? 'w-full lg:w-[48%]' : 'w-full max-w-4xl mx-auto'
+              layoutMode === 'split' ? 'w-full md:w-[48%]' : 'w-full max-w-4xl mx-auto'
             } h-full flex flex-col bg-white border-r border-outline-variant/40 overflow-hidden`}
           >
             {/* 3-Tab Header */}
@@ -922,6 +923,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                         value={wayOutMonth}
                         onChange={(e) => setWayOutMonth(Number(e.target.value))}
                         aria-label="Way Out Timeline exit month"
+                        aria-valuetext={`Month ${wayOutMonth}: ${wayOut.headline}`}
                         className="w-full accent-primary-container cursor-pointer"
                       />
                     </div>
@@ -977,7 +979,8 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                                     : 'bg-emerald-100 text-emerald-800'
                               }`}
                             >
-                              ● {f.severity.toUpperCase()} • {f.category}
+                              {f.severity === 'critical' ? '● ' : ''}
+                              {f.severity.toUpperCase()} • {f.category}
                             </span>
                             <span className="text-[11px] font-mono text-on-surface-variant">{f.line_ref}</span>
                           </div>
@@ -1318,7 +1321,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
         {layoutMode !== 'report' && (
           <section
             className={`${
-              layoutMode === 'split' ? 'hidden lg:flex lg:w-[52%]' : 'flex w-full'
+              layoutMode === 'split' ? 'hidden md:flex md:w-[52%]' : 'flex w-full'
             } h-full flex-col bg-surface-container-low overflow-hidden`}
           >
             {/* Sheet Toolbar */}
@@ -1503,8 +1506,12 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                           ref={(el) => {
                             clauseRefs.current[clause.clause_id] = el;
                           }}
-                          className={`rounded-xl border p-4 space-y-2 transition-all duration-300 ${borderClass} ${
-                            isActive ? 'clause-active-pulse' : isAnyActive ? 'opacity-55' : 'opacity-100'
+                          role="article"
+                          tabIndex={0}
+                          aria-label={clause.section_label}
+                          aria-current={isActive ? 'true' : undefined}
+                          className={`rounded-xl border p-4 space-y-2 transition-all duration-300 focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-primary-container ${borderClass} ${
+                            isActive ? 'clause-active-pulse' : isAnyActive ? 'opacity-70' : 'opacity-100'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">

@@ -94,6 +94,7 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenNav('landing')}
+                aria-current={activeNav === 'landing' ? 'page' : undefined}
                 className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                   activeNav === 'landing'
                     ? 'bg-surface-container-high text-on-surface'
@@ -105,6 +106,7 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenNav('vault')}
+                aria-current={activeNav === 'vault' ? 'page' : undefined}
                 className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                   activeNav === 'vault'
                     ? 'bg-surface-container-high text-on-surface'
@@ -116,6 +118,7 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenNav('benchmarks')}
+                aria-current={activeNav === 'benchmarks' ? 'page' : undefined}
                 className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                   activeNav === 'benchmarks'
                     ? 'bg-surface-container-high text-on-surface'
@@ -127,6 +130,7 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenNav('privacy')}
+                aria-current={activeNav === 'privacy' ? 'page' : undefined}
                 className={`px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                   activeNav === 'privacy'
                     ? 'bg-surface-container-high text-on-surface'
@@ -353,7 +357,7 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
                       className="sr-only peer"
                       aria-label="Auto-mask Aadhaar, Phone and PAN on-device"
                     />
-                    <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container" />
+                    <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-container peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary-container" />
                   </label>
                 </div>
               </div>

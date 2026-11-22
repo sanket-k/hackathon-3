@@ -274,7 +274,7 @@ function buildLocalDeterministicAudit(rawText: string, language: LanguageCode, d
   };
 }
 
-async function createApp() {
+export async function createApp() {
   const app = express();
   app.use(express.json({ limit: BODY_LIMIT }));
 
@@ -731,9 +731,20 @@ async function createApp() {
     },
   );
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`LawLens server running on http://0.0.0.0:${PORT}`);
-  });
+  return app;
 }
 
-createApp();
+/**
+ * Local entrypoint. Guarded so importing this module on a serverless host does not
+ * open a listening socket — Vercel's `api/index.ts` imports `createApp` instead.
+ */
+const isDirectRun =
+  process.env.VERCEL !== '1' && process.argv[1] && /server\.(ts|js|mts)$/.test(process.argv[1]);
+
+if (isDirectRun) {
+  createApp().then((app) => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`LawLens server running on http://0.0.0.0:${PORT}`);
+    });
+  });
+}

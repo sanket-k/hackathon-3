@@ -1,10 +1,42 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import type { AuditResult, LanguageCode } from '../types/contract';
 import type { BriefExportRequest } from '../types/ui';
 import { exportBriefPDF, exportOnePageBriefPDF } from '../utils/pdfBrief';
 import { copyText } from '../utils/clipboard';
 import { Icon } from './Icons';
+
+/**
+ * Shared modal behaviour: focus the panel on open, restore the trigger on close,
+ * and close on Escape. Without this every dialog leaves focus on the element
+ * behind the scrim and a keyboard user cannot dismiss it.
+ */
+const useDialogBehaviour = (open: boolean, onClose: () => void) => {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<Element | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    triggerRef.current = document.activeElement;
+    panelRef.current?.focus();
+    return () => {
+      const trigger = triggerRef.current;
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
+    };
+  }, [open]);
+
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
+  return { panelRef, onKeyDown };
+};
 
 interface WhatsAppModalProps {
   open: boolean;
@@ -23,6 +55,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
 }) => {
   const [waLang, setWaLang] = useState<'en' | 'kn'>('en');
   const [message, setMessage] = useState(initialDraft);
+  const { panelRef, onKeyDown } = useDialogBehaviour(open, onClose);
 
   useEffect(() => {
     if (waLang === 'en') {
@@ -62,8 +95,13 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Draft WhatsApp Counter-Offer"
+      onKeyDown={onKeyDown}
     >
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[90vh]">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[90vh] outline-none"
+      >
         <div className="p-4 bg-[#075E54] text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -135,7 +173,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
               rows={8}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full text-xs font-sans p-2 rounded-xl bg-transparent border-0 focus:ring-0 focus:outline-none text-stone-900 resize-none leading-relaxed"
+              className="w-full text-xs font-sans p-2 rounded-xl bg-transparent border-0 focus:ring-0 focus:outline-none focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-primary-container text-stone-900 resize-none leading-relaxed"
             />
             <div className="flex items-center justify-between text-[10px] text-stone-600 pt-1 border-t border-[#b8e49c]/40 font-mono">
               <span>Character count: {message.length}</span>
@@ -162,7 +200,7 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
             onClick={() => {
               void handleOpenWhatsApp();
             }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] font-bold text-xs shadow-md transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] text-[#04352a] hover:bg-[#20ba59] font-bold text-xs shadow-md transition-all cursor-pointer"
           >
             <Icon name="send" className="text-[18px]" />
             <span>Send via WhatsApp Web</span>
@@ -182,6 +220,8 @@ interface BriefModalProps {
 }
 
 export const BriefModal: React.FC<BriefModalProps> = ({ open, onClose, audit, request, onToast }) => {
+  const { panelRef, onKeyDown } = useDialogBehaviour(open, onClose);
+
   if (!open) return null;
 
   const handleDownload = () => {
@@ -199,8 +239,13 @@ export const BriefModal: React.FC<BriefModalProps> = ({ open, onClose, audit, re
       role="dialog"
       aria-modal="true"
       aria-label="Executive 1-Page Summary Brief"
+      onKeyDown={onKeyDown}
     >
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[92vh]">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[92vh] outline-none"
+      >
         <div className="p-4 bg-surface-container-low border-b border-surface-container flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center">
@@ -309,6 +354,8 @@ interface SecurityAuditModalProps {
 }
 
 export const SecurityAuditModal: React.FC<SecurityAuditModalProps> = ({ open, onClose, audit }) => {
+  const { panelRef, onKeyDown } = useDialogBehaviour(open, onClose);
+
   if (!open) return null;
 
   return (
@@ -317,8 +364,13 @@ export const SecurityAuditModal: React.FC<SecurityAuditModalProps> = ({ open, on
       role="dialog"
       aria-modal="true"
       aria-label="Zero-Cloud Privacy and PII Shield Audit"
+      onKeyDown={onKeyDown}
     >
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[90vh]">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[90vh] outline-none"
+      >
         <div className="p-4 bg-emerald-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center">
@@ -370,7 +422,7 @@ export const SecurityAuditModal: React.FC<SecurityAuditModalProps> = ({ open, on
                 >
                   <div>
                     <span className="font-bold text-on-surface block">{tok.label}</span>
-                    <span className="font-mono text-[10px] text-outline">{tok.masked_preview}</span>
+                    <span className="font-mono text-[10px] text-on-surface-variant">{tok.masked_preview}</span>
                   </div>
                   <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">
                     {tok.status}
@@ -408,6 +460,7 @@ interface MobileQrModalProps {
 
 export const MobileQrModal: React.FC<MobileQrModalProps> = ({ open, onClose, language }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const { panelRef, onKeyDown } = useDialogBehaviour(open, onClose);
   const currentUrl = typeof window !== 'undefined' ? window.location.href : 'http://localhost:3000';
 
   useEffect(() => {
@@ -425,8 +478,13 @@ export const MobileQrModal: React.FC<MobileQrModalProps> = ({ open, onClose, lan
       role="dialog"
       aria-modal="true"
       aria-label="Open on Mobile Phone QR"
+      onKeyDown={onKeyDown}
     >
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-surface-container p-6 flex flex-col items-center text-center gap-4">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-surface-container p-6 flex flex-col items-center text-center gap-4 outline-none"
+      >
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Icon name="qr_code_2" className="text-primary text-[22px]" />
