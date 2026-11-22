@@ -3,6 +3,7 @@ import type { AuditResult, ContractClause, LanguageCode, VaultDocument } from '.
 import { calculateWayOutAtMonth } from '../utils/wayOutMath';
 import { ORIGINAL_SCAN_DEMO_URL } from '../utils/ingest';
 import { playRegionalSpeech, stopAllSpeech } from '../utils/audioSync';
+import { copyText } from '../utils/clipboard';
 import {
   MIN_VOICE_CAPTURE_MS,
   startVoiceCapture,
@@ -72,6 +73,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
   );
   const [includeMissingAddendum, setIncludeMissingAddendum] = useState<boolean>(false);
   const [customDraftOverride, setCustomDraftOverride] = useState<string | null>(null);
+  const [negotiateChannel, setNegotiateChannel] = useState<'whatsapp' | 'email'>('whatsapp');
 
   // Audio playback state
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -179,6 +181,21 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
     setSelectedFindingIds((prev) =>
       prev.includes(findingId) ? prev.filter((id) => id !== findingId) : [...prev, findingId],
     );
+  };
+
+  const handleCopyDraft = async () => {
+    const copied = await copyText(activeDraft);
+    onToast(copied ? 'Counter-offer draft copied to clipboard!' : 'Copy failed — select the draft text manually.');
+  };
+
+  const handleSendNegotiation = () => {
+    if (negotiateChannel === 'email') {
+      const subject = `Clause Revision Request — ${audit.title.split(' • ')[0]}`;
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(activeDraft)}`;
+      onToast('Opened Email draft!');
+      return;
+    }
+    onOpenWhatsAppModal(activeDraft);
   };
 
   const handleAskQuestion = async (qText: string): Promise<QaHistoryEntry | null> => {
@@ -505,12 +522,32 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                 <span>Local PII Shield: {audit.pii_masked_tokens.length} tokens masked on-device</span>
               </button>
 
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap ${
+                  audit.lane === 'B'
+                    ? 'bg-amber-50/35 text-amber-800 border-amber-300'
+                    : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/40'
+                }`}
+              >
+                <Icon name={audit.lane === 'B' ? 'photo_camera' : 'picture_as_pdf'} className="text-[14px]" />
+                <span>
+                  {audit.lane === 'B'
+                    ? 'Image Mode · EXIF stripped · Zero-retention'
+                    : 'Vector PDF · On-device extract'}
+                </span>
+              </span>
+
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white border border-outline-variant/40 text-[11px] font-semibold text-on-surface whitespace-nowrap">
                 <Icon name="account_balance" className="text-[14px] text-primary-container" />
                 <span>{audit.rule_pack_applied.display_name}</span>
                 <span className="text-primary-container font-bold">
                   {audit.rule_pack_applied.match_pct}% Matched
                 </span>
+                {audit.rule_pack_applied.panIndiaOnly === true && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                    Pan-India norms only
+                  </span>
+                )}
               </span>
 
               <button
@@ -905,7 +942,7 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                     <div>
                       <h3 className="text-sm font-bold text-on-surface">Counter-Offer Builder</h3>
                       <p className="text-xs text-on-surface-variant">
-                        Select clauses to contest and copy or send via WhatsApp
+                        Select clauses to contest and copy or send via WhatsApp or email
                       </p>
                     </div>
                     <div className="flex items-center p-1 rounded-lg bg-surface-container text-xs">
@@ -974,6 +1011,11 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                     <label htmlFor="desktop-negotiate-draft" className="text-xs font-bold text-on-surface">
                       Live Counter-Offer Message
                     </label>
+                    {negotiateChannel === 'email' && (
+                      <div className="px-3 py-1.5 rounded-xl bg-surface-container-lowest border border-outline-variant/40 text-[11px] font-semibold text-on-surface">
+                        Subject: Clause Revision Request — {audit.title.split(' • ')[0]}
+                      </div>
+                    )}
                     <textarea
                       id="desktop-negotiate-draft"
                       rows={9}
@@ -983,12 +1025,41 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                     />
                   </div>
 
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">
+                      Channel
+                    </span>
+                    <div className="flex items-center p-1 rounded-xl bg-surface-container border border-outline-variant/40">
+                      <button
+                        type="button"
+                        onClick={() => setNegotiateChannel('whatsapp')}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                          negotiateChannel === 'whatsapp'
+                            ? 'bg-white text-primary-container font-bold shadow-xs'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNegotiateChannel('email')}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                          negotiateChannel === 'email'
+                            ? 'bg-white text-primary-container font-bold shadow-xs'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        Email
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard?.writeText(activeDraft).catch(() => {});
-                        onToast('Counter-offer draft copied to clipboard!');
+                        void handleCopyDraft();
                       }}
                       className="px-4 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface cursor-pointer"
                     >
@@ -996,11 +1067,15 @@ export const DesktopWorkspace: React.FC<DesktopWorkspaceProps> = ({
                     </button>
                     <button
                       type="button"
-                      onClick={() => onOpenWhatsAppModal(activeDraft)}
+                      onClick={handleSendNegotiation}
                       className="flex-1 px-4 py-2.5 rounded-xl bg-primary-container text-white text-xs font-bold hover:opacity-95 cursor-pointer flex items-center justify-center gap-2"
                     >
-                      <Icon name="chat" className="text-[16px]" />
-                      <span>Open in WhatsApp Composer</span>
+                      <Icon name={negotiateChannel === 'whatsapp' ? 'chat' : 'mail'} className="text-[16px]" />
+                      <span>
+                        {negotiateChannel === 'whatsapp'
+                          ? 'Open in WhatsApp Composer'
+                          : 'Open in Email Composer'}
+                      </span>
                     </button>
                   </div>
                 </div>
