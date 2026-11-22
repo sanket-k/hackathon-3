@@ -149,3 +149,171 @@ export async function extractPdfTextLocally(file: File): Promise<PdfExtractResul
     };
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Concurrent-processing primitives (pure client-side, additive)              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Default cap for concurrent image preparation. Keeps peak memory bounded:
+ * each in-flight image can hold a full-res bitmap + 1500px canvas.
+ */
+export const DEFAULT_IMAGE_CONCURRENCY_LIMIT = 3;
+
+/**
+ * Builds a DOMException named 'AbortError', preserving the original
+ * `signal.reason` (if any) as `cause` so callers can inspect why.
+ */
+function createAbortError(signal?: AbortSignal): DOMException {
+  const reason: unknown = signal?.reason;
+  if (reason instanceof DOMException && reason.name === 'AbortError') {
+    return reason;
+  }
+  const error = new DOMException('The operation was aborted.', 'AbortError');
+  if (reason !== undefined) {
+    try {
+      Object.defineProperty(error, 'cause', { value: reason, configurable: true, writable: true });
+    } catch {
+      // Older runtimes may not allow defining `cause`; the AbortError itself is enough.
+    }
+  }
+  return error;
+}
+
+/**
+ * Promise-based worker pool.
+ *
+ * - Runs at most `limit` workers concurrently (always at least 1).
+ * - Preserves input order in the returned array.
+ * - Rejects as soon as any worker rejects (first error wins).
+ * - Aborts promptly: if `signal` is already aborted it rejects immediately
+ *   without invoking any worker; if it aborts mid-flight the returned promise
+ *   rejects with a DOMException named 'AbortError' and no further workers are
+ *   started. Already-started work cannot be cancelled (promises are not
+ *   cancellable) but its results are discarded, so `worker` should cooperate
+ *   by checking the `signal` it receives when it holds resources worth freeing.
+ *
+ * Pure TypeScript: no DOM APIs beyond `AbortSignal`/`DOMException`.
+ */
+export async function mapWithConcurrencyLimit<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number, signal?: AbortSignal) => Promise<R>,
+  signal?: AbortSignal,
+): Promise<R[]> {
+  if (signal?.aborted) {
+    throw createAbortError(signal);
+  }
+
+  const total = items.length;
+  if (total === 0) return [];
+
+  const requested = Number.isFinite(limit) ? Math.floor(limit) : total;
+  const poolSize = Math.max(1, Math.min(requested, total));
+
+  const results = new Array<R>(total);
+
+  return new Promise<R[]>((resolve, reject) => {
+    let nextIndex = 0;
+    let activeCount = 0;
+    let finished = false;
+
+    const detach = (): void => {
+      if (signal) signal.removeEventListener('abort', handleAbort);
+    };
+
+    function handleAbort(): void {
+      if (finished) return;
+      finished = true;
+      detach();
+      reject(createAbortError(signal));
+    }
+
+    const settleError = (err: unknown): void => {
+      if (finished) return;
+      finished = true;
+      detach();
+      reject(err);
+    };
+
+    const startNext = (): void => {
+      if (finished) return;
+
+      if (nextIndex >= total) {
+        if (activeCount === 0) {
+          finished = true;
+          detach();
+          resolve(results);
+        }
+        return;
+      }
+
+      const index = nextIndex++;
+      activeCount += 1;
+
+      let pending: Promise<R>;
+      try {
+        pending = Promise.resolve(worker(items[index], index, signal));
+      } catch (err) {
+        activeCount -= 1;
+        settleError(err);
+        return;
+      }
+
+      pending.then(
+        (value) => {
+          if (finished) return;
+          results[index] = value;
+          activeCount -= 1;
+          startNext();
+        },
+        (err: unknown) => {
+          activeCount -= 1;
+          settleError(err);
+        },
+      );
+    };
+
+    if (signal) signal.addEventListener('abort', handleAbort, { once: true });
+    for (let i = 0; i < poolSize; i += 1) startNext();
+  });
+}
+
+/**
+ * Stable cache key for a `File`: name + size + lastModified.
+ * Identical across re-selections of the same on-disk file, distinct after an
+ * edit (size/mtime change).
+ */
+export function cacheKeyForFile(file: File): string {
+  const name = typeof file.name === 'string' ? file.name : '';
+  const size = Number.isFinite(file.size) ? file.size : 0;
+  const lastModified = Number.isFinite(file.lastModified) ? file.lastModified : 0;
+  return `${name}:${size}:${lastModified}`;
+}
+
+/**
+ * Prepares many images with bounded concurrency (default 3) via
+ * `compressImageAndCheckBlur`. Output order matches `files`.
+ *
+ * Abort semantics: aborting `signal` rejects with a DOMException named
+ * 'AbortError'; jobs that have not started are skipped and the worker also
+ * re-checks the signal before/after the (uncancellable) canvas work so a
+ * completed-but-aborted result is never returned.
+ */
+export async function prepareImagesWithLimit(
+  files: File[],
+  limit: number = DEFAULT_IMAGE_CONCURRENCY_LIMIT,
+  signal?: AbortSignal,
+): Promise<ImagePrepResult[]> {
+  return mapWithConcurrencyLimit<File, ImagePrepResult>(
+    files,
+    limit,
+    async (file, _index, workerSignal) => {
+      if (workerSignal?.aborted) throw createAbortError(workerSignal);
+      const result = await compressImageAndCheckBlur(file);
+      if (workerSignal?.aborted) throw createAbortError(workerSignal);
+      return result;
+    },
+    signal,
+  );
+}
