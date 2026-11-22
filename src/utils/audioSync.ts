@@ -1,4 +1,5 @@
 import type { LanguageCode } from '../types/contract';
+import { sanitizeSpokenScript } from './spokenScript';
 
 export interface SpeechCallbacks {
   onStart?: () => void;
@@ -34,11 +35,14 @@ export async function playRegionalSpeech(
 ): Promise<'sarvam' | 'browser_fallback'> {
   stopAllSpeech();
 
+  // spoken_script rules: no markdown/slashes/SSML, sentences capped at 16 words.
+  const spokenText = sanitizeSpokenScript(text);
+
   try {
     const res = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language, pace }),
+      body: JSON.stringify({ text: spokenText, language, pace }),
     });
 
     if (res.ok) {
@@ -58,7 +62,7 @@ export async function playRegionalSpeech(
         };
         audio.onerror = () => {
           activeAudioEl = null;
-          speakWithBrowserFallback(text, language, pace, callbacks);
+          speakWithBrowserFallback(spokenText, language, pace, callbacks);
         };
         await audio.play();
         return 'sarvam';
@@ -68,7 +72,7 @@ export async function playRegionalSpeech(
     // Fall through to deterministic browser speechSynthesis
   }
 
-  speakWithBrowserFallback(text, language, pace, callbacks);
+  speakWithBrowserFallback(spokenText, language, pace, callbacks);
   return 'browser_fallback';
 }
 
