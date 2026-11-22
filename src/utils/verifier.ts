@@ -29,6 +29,8 @@ export interface QuoteVerification {
   jaccard: number;
 }
 
+const JACCARD_THRESHOLD = 0.8;
+
 export function verifyQuoteAgainstText(quote: string, contractText: string): QuoteVerification {
   const cleanQuote = quote.trim();
   if (!cleanQuote || !contractText) {
@@ -48,7 +50,7 @@ export function verifyQuoteAgainstText(quote: string, contractText: string): Quo
     };
   }
 
-  // 2. Sliding window token Jaccard >= 0.80
+  // 2. Sliding window token Jaccard >= JACCARD_THRESHOLD (0.80)
   const quoteTokens = normalizeTokens(cleanQuote);
   if (quoteTokens.length < 3) {
     return { status: 'dropped', char_start: -1, char_end: -1, jaccard: 0 };
@@ -71,7 +73,7 @@ export function verifyQuoteAgainstText(quote: string, contractText: string): Quo
     cursor += lines[i].length;
   }
 
-  if (bestScore >= 0.8) {
+  if (bestScore >= JACCARD_THRESHOLD) {
     return {
       status: 'verified',
       char_start: bestStart,
@@ -89,8 +91,9 @@ export function verifyQuoteAgainstText(quote: string, contractText: string): Quo
 }
 
 /**
- * Dual-anchor verifier: drops any finding whose verbatim_quote fails >= 0.80 verification
- * or whose rule_id is not in the active rule pack's allowed set.
+ * Dual-anchor verifier: drops any finding whose verbatim_quote fails >= 0.80 verification,
+ * is missing or under 3 tokens, or (when allowedRuleIds is provided) whose rule_id is
+ * absent, empty, or not in the active rule pack's allowed set.
  */
 export function filterVerifiedFindings(
   findings: AuditFinding[],
@@ -101,10 +104,29 @@ export function filterVerifiedFindings(
   let droppedCount = 0;
 
   for (const f of findings) {
-    if (allowedRuleIds && f.rule_ref?.rule_id && !allowedRuleIds.has(f.rule_ref.rule_id)) {
+    // Fail-closed rule anchor: with an allow-list present, a finding must carry a
+    // non-empty rule_id inside that set. Missing rule_ref/rule_id is not a pass.
+    if (allowedRuleIds) {
+      const ruleId = f.rule_ref?.rule_id;
+      if (typeof ruleId !== 'string' || ruleId.trim() === '' || !allowedRuleIds.has(ruleId)) {
+        droppedCount++;
+        continue;
+      }
+    }
+
+    if (typeof f.verbatim_quote !== 'string') {
       droppedCount++;
       continue;
     }
+
+    // Quotes under 3 tokens are too generic to anchor a finding. verifyQuoteAgainstText
+    // only applies this floor on the Jaccard path, so enforce it here too: a 1-2 token
+    // quote would otherwise pass via the exact-substring shortcut.
+    if (normalizeTokens(f.verbatim_quote).length < 3) {
+      droppedCount++;
+      continue;
+    }
+
     const v = verifyQuoteAgainstText(f.verbatim_quote, contractText);
     if (v.status === 'verified') {
       verified.push({
