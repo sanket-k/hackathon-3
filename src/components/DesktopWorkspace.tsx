@@ -18,7 +18,7 @@ interface DesktopWorkspaceProps {
   language: LanguageCode;
   onChangeLanguage: (lang: LanguageCode) => void;
   onBackHome: () => void;
-  onOpenBriefModal: () => void;
+  onOpenBriefModal: (request?: { selectedClauseIds: string[]; tone: 'polite' | 'firm' }) => void;
   onOpenWhatsAppModal: (draft: string) => void;
   onOpenSecurityModal: () => void;
   onOpenMobileQr: () => void;

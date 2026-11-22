@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuditResult, LanguageCode, VaultDocument } from '../types/contract';
+import type { IntakeStats, BlackoutStrategy } from '../types/ui';
 import { ALL_PRESETS } from '../data/presets';
 import { ORIGINAL_SCAN_DEMO_URL, PHOTO_CHECK_DEMO_URL } from '../utils/ingest';
 import { calculateWayOutAtMonth } from '../utils/wayOutMath';
@@ -32,9 +33,11 @@ interface MobileFlowProps {
   activeVaultDoc?: VaultDocument;
   capturedPhotoUrl: string | null;
   telemetryStage: number;
+  /** Live per-scan facts for the telemetry stepper (null before a scan starts). */
+  intakeStats?: IntakeStats | null;
   onCancelTelemetry: () => void;
   onStartPhotoFlow: (photoUrl?: string) => void;
-  onRunPhotoAnalysis: (blackoutEnabled: boolean) => void;
+  onRunPhotoAnalysis: (blackoutStrategy: BlackoutStrategy) => void;
   onFilesSelected: (files: FileList) => void;
   onSelectPreset: (preset: AuditResult) => void;
   onOpenVaultItem: (doc: VaultDocument) => void;
@@ -43,6 +46,7 @@ interface MobileFlowProps {
   onClearVault: () => void;
   onSaveNote: (text: string, tag?: string) => void;
   onExportVaultJson: () => void;
+  onExportBrief: (request: { selectedClauseIds: string[]; tone: 'polite' | 'firm' }) => void;
   onOpenSecurityModal: () => void;
   onSwitchToDesktop?: () => void;
   isDesktopPreview?: boolean;
