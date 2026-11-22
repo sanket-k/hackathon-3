@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuditResult, LanguageCode, VaultDocument } from './types/contract';
-import type { BlackoutStrategy, BriefExportRequest, IntakeStats } from './types/ui';
+import type { BlackoutStrategy, BriefExportRequest, IntakeStats, VaultSavePolicy } from './types/ui';
 import { INITIAL_VAULT_DOCS, PRESET_BLR_RENTAL } from './data/presets';
 import {
   PHOTO_CHECK_DEMO_URL,
@@ -157,6 +157,17 @@ export default function App() {
   const toastTimerRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const telemetryTimerRef = useRef<number | null>(null);
+  /**
+   * Per-scan vault policy. `dont_save` keeps the result on screen but skips
+   * localStorage entirely, so a sensitive contract can be inspected and closed.
+   * Reset to `save` at the start of every intake.
+   */
+  const [vaultSavePolicy, setVaultSavePolicyState] = useState<VaultSavePolicy>('save');
+  const vaultSavePolicyRef = useRef<VaultSavePolicy>('save');
+  const setVaultSavePolicy = (policy: VaultSavePolicy) => {
+    vaultSavePolicyRef.current = policy;
+    setVaultSavePolicyState(policy);
+  };
   const vaultBudgetNotifiedRef = useRef(false);
   const intakeRef = useRef<{
     primaryUrl: string;
@@ -195,6 +206,9 @@ export default function App() {
   );
 
   const upsertVaultDocument = (audit: AuditResult, customTag?: string) => {
+    // "Don't save" is sticky for the current scan: the result is still shown,
+    // it just never touches the local vault.
+    if (vaultSavePolicyRef.current === 'dont_save') return;
     const newDoc: VaultDocument = {
       id: `vault-${audit.id}`,
       customTag: customTag || audit.title.split(' • ')[0],
@@ -523,6 +537,7 @@ export default function App() {
     if (!file) return;
 
     setIntakeStats(null);
+    if (!useMobileUI) setVaultSavePolicy('save');
 
     if (file.type.startsWith('image/')) {
       const imageFiles = all.filter((f) => f.type.startsWith('image/'));
@@ -653,7 +668,8 @@ export default function App() {
             setCapturedPhotoUrl(photoUrl || PHOTO_CHECK_DEMO_URL);
             setMobileScreen('m2_photo');
           }}
-          onRunPhotoAnalysis={(blackoutStrategy) => {
+          onRunPhotoAnalysis={(blackoutStrategy, savePolicy) => {
+            vaultSavePolicyRef.current = savePolicy;
             const saved =
               intakeRef.current && capturedPhotoUrl === intakeRef.current.primaryUrl
                 ? intakeRef.current
@@ -678,6 +694,8 @@ export default function App() {
           onSaveNote={handleSaveNote}
           onExportVaultJson={handleExportVaultJson}
           onExportBrief={handleExportBrief}
+          vaultSavePolicy={vaultSavePolicy}
+          onSetVaultSavePolicy={setVaultSavePolicy}
           onOpenSecurityModal={() => setSecurityModalOpen(true)}
           isDesktopPreview={!isMobileViewport && manualMobilePreview}
           onSwitchToDesktop={() => setManualMobilePreview(false)}

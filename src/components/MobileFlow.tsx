@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuditResult, LanguageCode, VaultDocument } from '../types/contract';
-import type { IntakeStats, BlackoutStrategy } from '../types/ui';
+import type { IntakeStats, BlackoutStrategy, VaultSavePolicy } from '../types/ui';
 import { estimateDocBytes, MAX_TOTAL_BYTES } from '../utils/vaultStore';
 import { ALL_PRESETS } from '../data/presets';
 import { ORIGINAL_SCAN_DEMO_URL, PHOTO_CHECK_DEMO_URL } from '../utils/ingest';
@@ -40,7 +40,10 @@ interface MobileFlowProps {
   intakeStats?: IntakeStats | null;
   onCancelTelemetry: () => void;
   onStartPhotoFlow: (photoUrl?: string) => void;
-  onRunPhotoAnalysis: (blackoutStrategy: BlackoutStrategy) => void;
+  onRunPhotoAnalysis: (blackoutStrategy: BlackoutStrategy, savePolicy: VaultSavePolicy) => void;
+  /** Current vault save policy for the in-flight scan. */
+  vaultSavePolicy?: VaultSavePolicy;
+  onSetVaultSavePolicy?: (policy: VaultSavePolicy) => void;
   onFilesSelected: (files: FileList) => void;
   onSelectPreset: (preset: AuditResult) => void;
   onOpenVaultItem: (doc: VaultDocument) => void;
@@ -97,6 +100,8 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
   onCancelTelemetry,
   onStartPhotoFlow,
   onRunPhotoAnalysis,
+  vaultSavePolicy = 'save',
+  onSetVaultSavePolicy,
   onFilesSelected,
   onSelectPreset,
   onOpenVaultItem,
@@ -859,6 +864,24 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                       : 'Header Blackout Off — Local regex shield still active'}
                   </span>
                 </div>
+
+                {onSetVaultSavePolicy && (
+                  <label className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-surface-container-lowest border border-outline-variant/40 cursor-pointer">
+                    <div>
+                      <span className="text-sm font-bold text-on-surface">Don&apos;t save to vault</span>
+                      <p className="text-[11px] text-on-surface-variant mt-0.5">
+                        Analyze once, then discard — nothing is written to local storage
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={vaultSavePolicy === 'dont_save'}
+                      onChange={(e) => onSetVaultSavePolicy(e.target.checked ? 'dont_save' : 'save')}
+                      className="w-5 h-5 accent-[#1d4ed8] shrink-0 cursor-pointer"
+                      aria-label="Do not save this scan to the local vault"
+                    />
+                  </label>
+                )}
               </div>
 
               {/* Language Grid */}
@@ -901,7 +924,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
               <div className="space-y-2.5 pt-1">
                 <button
                   type="button"
-                  onClick={() => onRunPhotoAnalysis(blackoutEnabled ? 'header' : 'none')}
+                  onClick={() => onRunPhotoAnalysis(blackoutEnabled ? 'header' : 'none', vaultSavePolicy)}
                   className="w-full min-h-[48px] rounded-2xl bg-primary-container text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer"
                 >
                   <Icon name="psychology" className="text-[20px]" />
