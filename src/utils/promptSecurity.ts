@@ -1,6 +1,9 @@
 /**
- * OWASP LLM01 Prompt Injection Hygiene & 4-stage JSON recovery
+ * OWASP LLM01 prompt injection hygiene & resilient JSON recovery.
  */
+
+/** Version tag for the injection-defence policy; bump when the rules change. */
+export const INJECTION_DEFENSE_VERSION = 'injectionDefense@1';
 
 export function cyrb53(str: string, seed = 0): string {
   let h1 = 0xdeadbeef ^ seed;
@@ -25,7 +28,10 @@ export function sanitizeForPrompt(rawInput: string, maxLength = 45000): string {
     .replace(/<\/untrusted_contract_text\s*>/gi, '[CLOSED_UNTRUSTED_CONTRACT_TEXT]')
     .replace(/<untrusted_contract_text\s*>/gi, '[OPENED_UNTRUSTED_CONTRACT_TEXT]')
     // Strip role-override tags
-    .replace(/<\/?(?:system|assistant|developer|override|instructions?)\b[^>]*>/gi, '[FILTERED_TAG]');
+    .replace(/<\/?(?:system|assistant|developer|override|instructions?)\b[^>]*>/gi, '[FILTERED_TAG]')
+    // Neutralize common chat-template delimiters
+    .replace(/<\|(?:im_start|im_end|endoftext)\|>/gi, '[FILTERED_TOKEN]')
+    .replace(/\[\/?INST\]/gi, '[FILTERED_TOKEN]');
 
   if (cleaned.length > maxLength) {
     cleaned = cleaned.slice(0, maxLength) + '\n[TRUNCATED_FOR_SAFETY]';
@@ -47,41 +53,52 @@ export function escapeHTML(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/** Try to parse a JSON candidate, cleaning trailing commas as a last resort. */
+function tryParse<T>(candidate: string): T | undefined {
+  try {
+    return JSON.parse(candidate) as T;
+  } catch {
+    try {
+      return JSON.parse(candidate.replace(/,\s*([}\]])/g, '$1')) as T;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
 /**
- * 4-stage JSON parser for resilient LLM output recovery
+ * 4-stage JSON recovery for LLM output:
+ *  1. direct parse
+ *  2. fenced ```json block
+ *  3. outermost {...} or [...] slice (object *or* array root)
+ *  4. trailing-comma cleanup inside that slice
  */
 export function parseJSONFromLLMResponse<T = unknown>(raw: string): T {
   const trimmed = raw.trim();
 
-  // Stage 1: Direct JSON.parse
-  try {
-    return JSON.parse(trimmed) as T;
-  } catch {
-    // continue
-  }
+  const direct = tryParse<T>(trimmed);
+  if (direct !== undefined) return direct;
 
-  // Stage 2: Extract fenced ```json ... ``` block
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenced && fenced[1]) {
-    try {
-      return JSON.parse(fenced[1].trim()) as T;
-    } catch {
-      // continue
-    }
+    const parsed = tryParse<T>(fenced[1].trim());
+    if (parsed !== undefined) return parsed;
   }
 
-  // Stage 3: Extract outermost { ... } or [ ... ]
-  const firstBrace = trimmed.indexOf('{');
-  const lastBrace = trimmed.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    const slice = trimmed.slice(firstBrace, lastBrace + 1);
-    try {
-      return JSON.parse(slice) as T;
-    } catch {
-      // Stage 4: Clean trailing commas before } or ]
-      const noTrailing = slice.replace(/,\s*([}\]])/g, '$1');
-      return JSON.parse(noTrailing) as T;
-    }
+  const firstObj = trimmed.indexOf('{');
+  const lastObj = trimmed.lastIndexOf('}');
+  const firstArr = trimmed.indexOf('[');
+  const lastArr = trimmed.lastIndexOf(']');
+
+  // Prefer whichever root delimiter opens first and closes after it.
+  const candidates: Array<[number, number]> = [];
+  if (firstObj !== -1 && lastObj > firstObj) candidates.push([firstObj, lastObj]);
+  if (firstArr !== -1 && lastArr > firstArr) candidates.push([firstArr, lastArr]);
+  candidates.sort((a, b) => a[0] - b[0]);
+
+  for (const [start, end] of candidates) {
+    const parsed = tryParse<T>(trimmed.slice(start, end + 1));
+    if (parsed !== undefined) return parsed;
   }
 
   throw new Error('JSON_PARSE_FAILED: Could not recover valid JSON from LLM response');

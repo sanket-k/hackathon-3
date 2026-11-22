@@ -167,6 +167,8 @@ export interface AuditResult {
     is_exact_jurisdiction_match: boolean;
     verified_date: string;
     match_pct: number;
+    /** True when only pan-India norms apply (no state-specific match). */
+    panIndiaOnly?: boolean;
   };
   summary: {
     risk_score: number;

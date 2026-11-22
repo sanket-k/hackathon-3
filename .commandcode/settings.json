@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(node -v)",
+      "Shell(bun:*)",
+      "Shell(ls:*)",
+      "Shell(node -e console.log(JSON.stringify(require('./package.json').scripts,null,2)))",
+      "Shell(git:*)",
+      "Shell(mkdir:*)",
+      "Shell(for:*)",
+      "Shell(do:*)",
+      "Shell(ln:*)",
+      "Shell(done:*)",
+      "Shell(cd /Users/sanket/projects/3-hack && (node --import tsx server.ts > /tmp/lawlens-dev.log 2>&1 &) && for i in $(seq 1 30); do sleep 1; if curl -sf http://localhost:3000/api/health >/dev/null 2>&1; then break; fi; done; echo \"=== health ===\" ; curl -s http://localhost:3000/api/health || (echo \"server failed\"; tail -20 /tmp/lawlens-dev.log))",
+      "Shell(lsof:*)",
+      "Shell(cat:*)",
+      "Shell(node -e require('dotenv').config(); console.log('OPENROUTER set:', !!process.env.OPENROUTER_API_KEY, 'SARVAM set:', !!process.env.SARVAM_API_KEY))",
+      "Shell(cd /Users/sanket/projects/3-hack && (PORT=3100 node --import tsx server.ts > /tmp/lawlens-3100.log 2>&1 &) && for i in $(seq 1 30); do sleep 1; if curl -sf http://localhost:3100/api/health >/dev/null 2>&1; then break; fi; done; echo \"=== health ===\" && curl -s http://localhost:3100/api/health && echo && echo \"=== audit (live OpenRouter) ===\" && curl -s -m 90 -X POST http://localhost:3100/api/audit -H 'Content-Type: application/json' -d '{\"contract_text\":\"Clause 4.2 Security Deposit: The Tenant shall deposit an interest-free refundable caution deposit of Rs 2,50,000 prior to handover. Clause 8.2 Lock-in: vacating before six months forfeits one month rent.\",\"language\":\"en\",\"contract_type\":\"residential_rental\",\"title\":\"Key Test Lease\"}' | head -c 600)",
+      "Shell(echo:*)",
+      "Shell(curl -s https://openrouter.ai/api/v1/models)",
+      "Shell(node -e let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const m=JSON.parse(d).data.filter(x=>/anthropic.*(sonnet|haiku)/.test(x.id)).map(x=>x.id);console.log(m.slice(0,20).join('\\n'))}))",
+      "Shell(chmod:*)",
+      "Shell(bash -n scripts/verify.sh)",
+      "Shell(node -e JSON.parse(require('fs').readFileSync('.env.example','utf8')); 2 > /dev/null)",
+      "Shell(cd /Users/sanket/projects/3-hack && for n in 1 3 4 5 6 8 9 10; do wt=\".worktrees/t$n\"; if [ -n \"$(git -C \"$wt\" status --porcelain)\" ]; then git -C \"$wt\" add -A && git -C \"$wt\" commit -q -m \"feat(gap-t$n): implement chunk $n Co-authored-by: CommandCodeBot <noreply@commandcode.ai>\" && echo \"t$n committed: $(git -C \"$wt\" rev-parse --short HEAD)\"; else echo \"t$n: no changes\"; fi; done)",
+      "Shell(cd /Users/sanket/projects/3-hack && wt=\".worktrees/t7\"; if [ -n \"$(git -C \"$wt\" status --porcelain)\" ]; then git -C \"$wt\" add -A && git -C \"$wt\" commit -q -m \"docs(gap-t7): design system and audit schema docs Co-authored-by: CommandCodeBot <noreply@commandcode.ai>\" && echo \"t7 committed: $(git -C \"$wt\" rev-parse --short HEAD)\"; else echo \"t7: no changes\"; fi; echo \"=== remaining running worktrees ===\"; git -C .worktrees/t2 status --porcelain | head)",
+      "Shell(cd /Users/sanket/projects/3-hack && for n in 1 3 4 5 6 7 8 9 10; do if git merge --no-ff --no-edit \"gap/t$n\" >/tmp/merge-t$n.log 2>&1; then echo \"merged t$n\"; else echo \"CONFLICT merging t$n:\"; cat /tmp/merge-t$n.log; fi; done && echo \"=== main log ===\" && git log --oneline -12)",
+      "Shell(npx tsc --noEmit 2 >& 1)",
+      "Shell(node --import tsx --test src/utils/guardrails.test.ts 2 >& 1)",
+      "Shell(cd /Users/sanket/projects/3-hack && (lsof -ti tcp:3100 | xargs kill 2>/dev/null || true) && sleep 1 && (PORT=3100 node --import tsx server.ts > /tmp/lawlens-3100b.log 2>&1 &) && for i in $(seq 1 30); do sleep 1; if curl -sf http://localhost:3100/api/health >/dev/null 2>&1; then break; fi; done && echo \"=== audit ===\" && curl -s -m 120 -X POST http://localhost:3100/api/audit -H 'Content-Type: application/json' -d '{\"contract_text\":\"Clause 4.2 Security Deposit: The Tenant shall deposit an interest-free refundable caution deposit of Rs 2,50,000 prior to handover of keys. Clause 8.2 Lock-in: vacating before six months forfeits one month rent.\",\"language\":\"en\",\"contract_type\":\"residential_rental\",\"title\":\"Key Test Lease\"}' | head -c 700)",
+      "Shell(cd /Users/sanket/projects/3-hack && git add server.ts && git commit -q -m \"fix: use live OpenRouter Claude model ids (haiku-5.5 / sonnet-5.5) The previous anthropic/claude-3.5-* ids return HTTP 404 (no provider), which silently forced the local fallback audit. Co-authored-by: CommandCodeBot <noreply@commandcode.ai>\" && echo \"committed $(git rev-parse --short HEAD)\" && git push -u origin main 2>&1 | tail -20)",
+      "Shell(cd /Users/sanket/projects/3-hack && echo \"upstream: $(git rev-parse --abbrev-ref main@{upstream} 2>&1)\" && echo \"=== ls-remote ===\" && GIT_TERMINAL_PROMPT=0 git ls-remote origin refs/heads/main 2>&1 | head -5)",
+      "Shell(cd /Users/sanket/projects/3-hack && wt=\".worktrees/t2\" && if [ -n \"$(git -C \"$wt\" status --porcelain)\" ]; then git -C \"$wt\" add -A && git -C \"$wt\" commit -q -m \"feat(gap-t2): real hold-to-ask voice capture via STT and QA Co-authored-by: CommandCodeBot <noreply@commandcode.ai>\" && echo \"t2 committed: $(git -C \"$wt\" rev-parse --short HEAD)\"; fi && git merge --no-ff --no-edit gap/t2 >/tmp/merge-t2.log 2>&1 && echo \"merged t2\" || (echo \"MERGE ISSUE\"; cat /tmp/merge-t2.log) && echo \"=== typecheck ===\" && npx tsc --noEmit 2>&1 | head -20; echo \"tsc exit: ${PIPESTATUS[0]}\")"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

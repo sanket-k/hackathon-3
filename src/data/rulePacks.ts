@@ -220,24 +220,48 @@ export const RULE_PACKS: Record<string, RulePack> = {
   },
 };
 
+/** Explicit city/state tokens that indicate a Karnataka jurisdiction. */
+const KARNATAKA_TOKENS = ['karnataka', 'bengaluru', 'bangalore', 'mysuru', 'mysore', 'hubballi', 'hubli'];
+
+/**
+ * Detect the jurisdiction from *location-level* signal only.
+ *
+ * Callers must pass a location hint (`stateOrCity`) — never the whole contract
+ * body — otherwise words like "bank" or "take" would falsely match "ka".
+ */
+export function detectJurisdiction(contractText: string): string {
+  const lower = contractText.toLowerCase();
+  for (const token of KARNATAKA_TOKENS) {
+    if (lower.includes(token)) return 'Karnataka';
+  }
+  return '';
+}
+
 export function selectRulePack(contractType: string, stateOrCity?: string): {
   pack: RulePack;
   isExactMatch: boolean;
+  panIndiaOnly: boolean;
 } {
   const loc = (stateOrCity || '').toLowerCase();
   if (contractType === 'personal_loan' || contractType === 'loan') {
-    return { pack: RULE_PACKS['in-central-rbi-loan'], isExactMatch: true };
+    return { pack: RULE_PACKS['in-central-rbi-loan'], isExactMatch: true, panIndiaOnly: true };
   }
   if (contractType === 'employment_offer' || contractType === 'employment') {
-    return { pack: RULE_PACKS['in-central-employment'], isExactMatch: true };
+    return { pack: RULE_PACKS['in-central-employment'], isExactMatch: true, panIndiaOnly: true };
   }
   if (contractType === 'residential_rental' || contractType === 'rental') {
-    if (!loc || loc.includes('ka') || loc.includes('karnataka') || loc.includes('bengaluru') || loc.includes('bangalore') || loc.includes('indiranagar')) {
-      return { pack: RULE_PACKS['in-ka-rental'], isExactMatch: true };
+    const isKarnataka = !loc || KARNATAKA_TOKENS.some((token) => loc.includes(token));
+    if (isKarnataka) {
+      return { pack: RULE_PACKS['in-ka-rental'], isExactMatch: true, panIndiaOnly: false };
     }
-    return { pack: RULE_PACKS['in-general-fallback'], isExactMatch: false };
+    return { pack: RULE_PACKS['in-general-fallback'], isExactMatch: false, panIndiaOnly: true };
   }
-  return { pack: RULE_PACKS['in-general-fallback'], isExactMatch: false };
+  return { pack: RULE_PACKS['in-general-fallback'], isExactMatch: false, panIndiaOnly: true };
+}
+
+/** Load a pack by its stable id. Returns null for unknown ids (never throws). */
+export function getPackById(packId: string): RulePack | null {
+  return RULE_PACKS[packId] || null;
 }
 
 export function validateRulePack(pack: RulePack): { valid: boolean; errors: string[] } {

@@ -28,13 +28,53 @@ const PROTECTED_LOCATIONS = new Set([
   'koramangala',
   'whitefield',
   'mysuru',
+  'mysore',
+  'hubballi',
+  'hubli',
   'mumbai',
   'maharashtra',
+  'pune',
   'delhi',
+  'new delhi',
+  'noida',
+  'gurugram',
+  'gurgaon',
   'chennai',
   'tamil nadu',
+  'coimbatore',
+  'madurai',
   'hyderabad',
   'telangana',
+  'secunderabad',
+  'kolkata',
+  'west bengal',
+  'kerala',
+  'kochi',
+  'cochin',
+  'trivandrum',
+  'gujarat',
+  'ahmedabad',
+  'surat',
+  'vadodara',
+  'rajasthan',
+  'jaipur',
+  'uttar pradesh',
+  'lucknow',
+  'kanpur',
+  'madhya pradesh',
+  'indore',
+  'bhopal',
+  'punjab',
+  'chandigarh',
+  'haryana',
+  'odisha',
+  'bhubaneswar',
+  'assam',
+  'guwahati',
+  'bihar',
+  'patna',
+  'goa',
+  'panaji',
   'india',
 ]);
 
@@ -97,6 +137,42 @@ export function maskIndianPII(rawText: string): PiiMaskResult {
     countsByType,
     totalMasked: tokens.length,
   };
+}
+
+/**
+ * Fail-closed pre-upload verdict. Unlike `assertNoPiiLeak` (which throws), this
+ * returns a typed result the UI can render: when `safeToSend` is false the
+ * caller MUST block the upload and show `reason`.
+ */
+export function checkSafeToSend(
+  serializedOutbound: string,
+  rawTokens: MaskedTokenEntry[],
+): { safeToSend: boolean; reason?: string; tokenTypes: string[] } {
+  let clean = serializedOutbound;
+  for (const entry of rawTokens) {
+    if (entry.rawValue.length >= 4 && clean.includes(entry.rawValue)) {
+      clean = clean.split(entry.rawValue).join(entry.token);
+    }
+  }
+
+  const tokenTypes = Array.from(new Set(rawTokens.map((t) => t.type)));
+  const leakedTokens = rawTokens.filter((entry) => entry.rawValue.length >= 4 && clean.includes(entry.rawValue));
+  if (leakedTokens.length > 0) {
+    return {
+      safeToSend: false,
+      reason: `Unmaskable ${Array.from(new Set(leakedTokens.map((t) => t.type))).join(', ')} value persisted after redaction.`,
+      tokenTypes,
+    };
+  }
+
+  if (/\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b/.test(clean)) {
+    return { safeToSend: false, reason: 'Unmasked Aadhaar pattern detected in outbound payload.', tokenTypes };
+  }
+  if (/\b[A-Z]{5}\d{4}[A-Z]\b/.test(clean)) {
+    return { safeToSend: false, reason: 'Unmasked PAN pattern detected in outbound payload.', tokenTypes };
+  }
+
+  return { safeToSend: true, tokenTypes };
 }
 
 /**
