@@ -258,12 +258,13 @@ const isAnyActive = activeClauseId !== null;
 > **Deviation:** the spec describes dimming to **18%**; the code dims to **55%** (`opacity-55`).
 > 55% is the shipped, readable value — 18% would push `#131b2e` text below AA on `#faf8ff`.
 
-> **State of the art vs. intent:** the clause *playlist* that would fire `onItemStart` per finding
-> (`src/utils/audioPlaylist.ts`, `buildClausePlaylist` / `playClausePlaylist`) exists only on the unmerged
-> `wl/audio` branch and is imported by no component. Today the pulse is triggered per user action — a
-> finding's Listen button, the walkthrough chip, or a Q&A answer — rather than automatically as a multi-clause
-> walkthrough advances. The visual contract above is what that wiring is meant to drive, so the pulse/dim
-> behaviour is stable either way.
+> **Audio drives the state:** the clause playlist (`src/utils/audioPlaylist.ts`,
+> `buildClausePlaylist` / `playClausePlaylist`) is wired into both shells. On desktop,
+> `onItemStart` calls `jumpToClause(item.clauseId)`, so playing the walkthrough scrolls the sheet,
+> pulses the active clause, and dims the rest to 55% as each item advances. Mobile uses the same
+> playlist but only sets the focused clause and scrolls it into view — it has no pulse/dim, so the
+> desktop is the reference implementation. A finding's Listen button plays a one-item playlist and
+> therefore pulses the same way.
 
 Supporting affordances in the same viewer: OCR tokens are underlined-dashed buttons
 (`bg-blue-100 text-primary-container` → `bg-emerald-100 text-emerald-900` once verified) that open a
