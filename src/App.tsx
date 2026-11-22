@@ -1,32 +1,59 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuditResult, LanguageCode, VaultDocument } from './types/contract';
+import type { BlackoutStrategy, BriefExportRequest, IntakeStats } from './types/ui';
 import { INITIAL_VAULT_DOCS, PRESET_BLR_RENTAL } from './data/presets';
 import {
   PHOTO_CHECK_DEMO_URL,
+  blackoutHeaderRegion,
+  buildLaneAStats,
+  buildLaneBStats,
   compressImageAndCheckBlur,
-  extractPdfTextLocally,
+  decidePdfLane,
+  prepareImagesForUpload,
+  shouldBlockBlurry,
 } from './utils/ingest';
-import { assertNoPiiLeak, maskIndianPII, rehydrateParsedObject } from './utils/piiGuard';
+import type { ImagePrepResult, LaneADecision } from './utils/ingest';
+import { checkSafeToSend, maskIndianPII, rehydrateParsedObject } from './utils/piiGuard';
+import type { PiiMaskResult } from './utils/piiGuard';
+import { loadVault, persistVault } from './utils/vaultStore';
 import { DesktopLanding } from './components/DesktopLanding';
 import { DesktopWorkspace } from './components/DesktopWorkspace';
 import { DesktopSubViews } from './components/DesktopSubViews';
 import { MobileFlow, type MobileScreen } from './components/MobileFlow';
 import { BriefModal, MobileQrModal, SecurityAuditModal, WhatsAppModal } from './components/Modals';
 
-const VAULT_STORAGE_KEY = 'lawlens_vault_v1';
-
 type DesktopView = 'landing' | 'workspace' | 'vault' | 'benchmarks' | 'privacy';
 
+interface PhotoPipelineInput {
+  strategy: BlackoutStrategy;
+  /** Prepared (and possibly blacked-out later) page images, primary page first. */
+  dataUrls: string[];
+  /** On-device prep result of the primary page, when this scan came from files. */
+  blurPrep?: ImagePrepResult;
+  /** Measured compress + blur-check duration for this intake. */
+  blurMs?: number;
+}
+
 function loadInitialVault(): VaultDocument[] {
-  if (typeof window === 'undefined') return INITIAL_VAULT_DOCS;
-  try {
-    const raw = window.localStorage.getItem(VAULT_STORAGE_KEY);
-    if (!raw) return INITIAL_VAULT_DOCS;
-    const parsed = JSON.parse(raw) as VaultDocument[];
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_VAULT_DOCS;
-  } catch {
-    return INITIAL_VAULT_DOCS;
-  }
+  const loaded = loadVault();
+  return loaded.length > 0 ? loaded : INITIAL_VAULT_DOCS;
+}
+
+function emptyMask(rawText: string): PiiMaskResult {
+  return { maskedText: rawText, tokens: [], countsByType: {}, totalMasked: 0 };
+}
+
+function baseLaneBStats(
+  prep: ImagePrepResult | undefined,
+  piiCountsByType: Record<string, number>,
+  piiTotalMasked: number,
+): IntakeStats {
+  if (prep) return buildLaneBStats(prep, piiCountsByType);
+  return {
+    lane: 'B',
+    piiCountsByType: { ...piiCountsByType },
+    piiTotalMasked,
+  };
 }
 
 function hydrateAuditFromApiPayload(
@@ -36,6 +63,7 @@ function hydrateAuditFromApiPayload(
     findings?: AuditResult['findings'];
     missing_clauses?: AuditResult['missing_clauses'];
     rule_pack_applied?: AuditResult['rule_pack_applied'];
+    completeness?: AuditResult['completeness'];
   },
   fallbackBase: AuditResult,
   docTitle: string,
@@ -47,6 +75,7 @@ function hydrateAuditFromApiPayload(
     return {
       ...fallbackBase,
       ...payload.audit,
+      completeness: payload.audit.completeness || payload.completeness || fallbackBase.completeness,
       lane,
       original_photo_url: photoUrl || fallbackBase.original_photo_url,
     };
@@ -65,14 +94,26 @@ function hydrateAuditFromApiPayload(
     status: 'MASKED' as const,
   }));
 
+  const rulePack: AuditResult['rule_pack_applied'] = payload.rule_pack_applied
+    ? {
+        ...fallbackBase.rule_pack_applied,
+        ...payload.rule_pack_applied,
+        panIndiaOnly:
+          payload.rule_pack_applied.panIndiaOnly ??
+          fallbackBase.rule_pack_applied.panIndiaOnly ??
+          false,
+      }
+    : fallbackBase.rule_pack_applied;
+
   return {
     ...fallbackBase,
     id: `scan-${Date.now()}`,
     title: docTitle,
     lane,
     original_photo_url: photoUrl || fallbackBase.original_photo_url,
+    completeness: payload.completeness || fallbackBase.completeness,
     pii_masked_tokens: piiTokens.length > 0 ? piiTokens : fallbackBase.pii_masked_tokens,
-    rule_pack_applied: payload.rule_pack_applied || fallbackBase.rule_pack_applied,
+    rule_pack_applied: rulePack,
     summary: {
       ...fallbackBase.summary,
       ...(payload.summary || {}),
@@ -101,6 +142,8 @@ export default function App() {
   const [capturedPhotoUrl, setCapturedPhotoUrl] = useState<string | null>(null);
   const [telemetryStage, setTelemetryStage] = useState<number>(1);
   const [desktopScanning, setDesktopScanning] = useState<boolean>(false);
+  const [intakeStats, setIntakeStats] = useState<IntakeStats | null>(null);
+  const [briefRequest, setBriefRequest] = useState<BriefExportRequest | undefined>(undefined);
 
   // Modals
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
@@ -114,6 +157,13 @@ export default function App() {
   const toastTimerRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const telemetryTimerRef = useRef<number | null>(null);
+  const vaultBudgetNotifiedRef = useRef(false);
+  const intakeRef = useRef<{
+    primaryUrl: string;
+    dataUrls: string[];
+    prep: ImagePrepResult;
+    blurMs: number;
+  } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -130,10 +180,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(vaultDocs));
-    } catch {
-      // Ignore storage quota errors
+    const report = persistVault(vaultDocs);
+    if (report.dropped.length > 0 && !vaultBudgetNotifiedRef.current) {
+      vaultBudgetNotifiedRef.current = true;
+      showToast(`${report.dropped.length} documents exceeded the local vault size budget`);
     }
   }, [vaultDocs]);
 
@@ -232,6 +282,19 @@ export default function App() {
     showToast('Exported Local Vault JSON.');
   };
 
+  const handleExportBrief = (request?: { selectedClauseIds: string[]; tone: 'polite' | 'firm' }) => {
+    setBriefRequest(
+      request
+        ? {
+            auditId: activeAudit.id,
+            selectedClauseIds: request.selectedClauseIds,
+            tone: request.tone,
+          }
+        : undefined,
+    );
+    setBriefModalOpen(true);
+  };
+
   const startTelemetryTicker = (onComplete: () => void) => {
     if (telemetryTimerRef.current) window.clearInterval(telemetryTimerRef.current);
     setTelemetryStage(1);
@@ -255,7 +318,15 @@ export default function App() {
     showToast('Analysis cancelled.');
   };
 
-  const runPhotoAnalysisPipeline = async (blackout: boolean, photoOverride?: string) => {
+  const runPhotoAnalysisPipeline = async ({ strategy, dataUrls, blurPrep, blurMs }: PhotoPipelineInput) => {
+    setIntakeStats(
+      blurPrep
+        ? {
+            ...buildLaneBStats(blurPrep, {}),
+            gateTimingsMs: typeof blurMs === 'number' ? { 1: blurMs } : undefined,
+          }
+        : null,
+    );
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -265,7 +336,9 @@ export default function App() {
       setDesktopScanning(true);
     }
 
-    const photoToUse = photoOverride || capturedPhotoUrl || PHOTO_CHECK_DEMO_URL;
+    const blackout = strategy === 'header';
+    const uploadable = dataUrls.filter((url) => typeof url === 'string' && url.startsWith('data:image/'));
+    const photoToUse = dataUrls[0] || capturedPhotoUrl || PHOTO_CHECK_DEMO_URL;
 
     const finish = (finalAudit: AuditResult) => {
       if (controller.signal.aborted) return;
@@ -285,15 +358,30 @@ export default function App() {
       original_photo_url: photoToUse,
     };
 
-    // Call /api/ocr only if photo is an uploaded data URL; otherwise run clean instant demo telemetry
-    if (photoToUse.startsWith('data:image/')) {
+    // Call /api/ocr only if photos are uploaded data URLs; otherwise run clean instant demo telemetry
+    if (uploadable.length > 0) {
+      const gateTimingsMs: Record<number, number> = {};
+      if (typeof blurMs === 'number') gateTimingsMs[1] = blurMs;
+
+      let images = uploadable;
+      let piiGateMs = 0;
+      if (blackout) {
+        const blackoutStart = Date.now();
+        try {
+          images = await Promise.all(uploadable.map((url) => blackoutHeaderRegion(url)));
+        } catch {
+          images = uploadable;
+        }
+        piiGateMs += Date.now() - blackoutStart;
+      }
+
       try {
         const res = await fetch('/api/ocr', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
           body: JSON.stringify({
-            images: [photoToUse],
+            images,
             language_hint: language,
           }),
         });
@@ -306,29 +394,58 @@ export default function App() {
           };
           if (ocrJson.ok && ocrJson.data?.clauses && ocrJson.data.clauses.length > 0) {
             const combined = ocrJson.data.clauses.map((c) => `${c.section_label}: ${c.text}`).join('\n\n');
-            const masked = piiAutoMask || blackout ? maskIndianPII(combined) : { maskedText: combined, tokens: [], countsByType: {}, totalMasked: 0 };
-            const safeText = assertNoPiiLeak(masked.maskedText, masked.tokens);
+            const maskStart = Date.now();
+            const masked =
+              piiAutoMask || blackout ? maskIndianPII(combined) : emptyMask(combined);
+            piiGateMs += Date.now() - maskStart;
+
+            const piiVerdict = checkSafeToSend(masked.maskedText, masked.tokens);
+            if (!piiVerdict.safeToSend) {
+              setIntakeStats({
+                ...baseLaneBStats(blurPrep, masked.countsByType, masked.totalMasked),
+                blocked: true,
+                blockReason: piiVerdict.reason || 'Possible PII leak detected in outbound payload.',
+                gateTimingsMs: { ...gateTimingsMs, 2: piiGateMs },
+              });
+              if (controller.signal.aborted) return;
+              setDesktopScanning(false);
+              showToast('Upload blocked: possible PII leak — re-scan required');
+              if (useMobileUI) setMobileScreen('m2_photo');
+              return;
+            }
+
+            const auditStart = Date.now();
             const auditRes = await fetch('/api/audit', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               signal: controller.signal,
               body: JSON.stringify({
-                contract_text: safeText,
+                contract_text: masked.maskedText,
                 language,
                 title: 'Scanned Contract Photo',
               }),
             });
+            const auditGateMs = Date.now() - auditStart;
             if (auditRes.ok) {
+              const groundStart = Date.now();
               const rawAudit = await auditRes.json();
               const rehydrated = rehydrateParsedObject(rawAudit, masked.tokens);
-              ocrAuditResult = hydrateAuditFromApiPayload(
+              const hydrated = hydrateAuditFromApiPayload(
                 rehydrated,
                 PRESET_BLR_RENTAL,
                 'Scanned Contract Photo',
                 'B',
                 masked.countsByType,
-                photoToUse,
+                images[0] || photoToUse,
               );
+              const groundGateMs = Date.now() - groundStart;
+              ocrAuditResult = hydrated;
+              setIntakeStats({
+                ...baseLaneBStats(blurPrep, masked.countsByType, masked.totalMasked),
+                packDisplayName: hydrated.rule_pack_applied.display_name,
+                packMatchPct: hydrated.rule_pack_applied.match_pct,
+                gateTimingsMs: { ...gateTimingsMs, 2: piiGateMs, 3: auditGateMs, 4: groundGateMs },
+              });
             }
           }
         }
@@ -340,25 +457,76 @@ export default function App() {
     startTelemetryTicker(() => finish(ocrAuditResult));
   };
 
+  const handleImageIntake = async (imageFiles: File[]) => {
+    const prepStart = Date.now();
+    let preps: ImagePrepResult[];
+    try {
+      preps =
+        imageFiles.length === 1
+          ? [await compressImageAndCheckBlur(imageFiles[0])]
+          : await prepareImagesForUpload(imageFiles);
+    } catch {
+      showToast('Could not process image file. Loaded demo scan instead.');
+      setCapturedPhotoUrl(PHOTO_CHECK_DEMO_URL);
+      if (useMobileUI) setMobileScreen('m2_photo');
+      return;
+    }
+    const blurMs = Date.now() - prepStart;
+
+    if (preps.length === 0) {
+      showToast('Could not process image file. Loaded demo scan instead.');
+      setCapturedPhotoUrl(PHOTO_CHECK_DEMO_URL);
+      if (useMobileUI) setMobileScreen('m2_photo');
+      return;
+    }
+
+    const primary = preps[0];
+    setCapturedPhotoUrl(primary.dataUrl);
+
+    if (shouldBlockBlurry(primary)) {
+      intakeRef.current = null;
+      setIntakeStats({
+        ...buildLaneBStats(primary, {}),
+        blocked: true,
+        blockReason: `${primary.verdict} (sharpness ${primary.blurScore}) — retake before uploading.`,
+        gateTimingsMs: { 1: blurMs },
+      });
+      showToast(`Upload blocked: ${primary.verdict.toLowerCase()} — retake required.`);
+      if (useMobileUI) setMobileScreen('m2_photo');
+      return;
+    }
+
+    const dataUrls = preps.map((p) => p.dataUrl);
+    showToast(
+      `${primary.verdict} (EXIF stripped, ${Math.round(primary.compressedBytes / 1024)} KB${
+        preps.length > 1 ? ` · ${preps.length} pages` : ''
+      })`,
+    );
+    intakeRef.current = { primaryUrl: primary.dataUrl, dataUrls, prep: primary, blurMs };
+    setIntakeStats({ ...buildLaneBStats(primary, {}), gateTimingsMs: { 1: blurMs } });
+
+    if (useMobileUI) {
+      setMobileScreen('m2_photo');
+    } else {
+      await runPhotoAnalysisPipeline({
+        strategy: 'none',
+        dataUrls,
+        blurPrep: primary,
+        blurMs,
+      });
+    }
+  };
+
   const handleFilesSelected = async (files: FileList) => {
-    const file = files[0];
+    const all = Array.from(files);
+    const file = all[0];
     if (!file) return;
 
+    setIntakeStats(null);
+
     if (file.type.startsWith('image/')) {
-      try {
-        const prep = await compressImageAndCheckBlur(file);
-        setCapturedPhotoUrl(prep.dataUrl);
-        showToast(`${prep.verdict} (EXIF stripped, ${Math.round(prep.compressedBytes / 1024)} KB)`);
-        if (useMobileUI) {
-          setMobileScreen('m2_photo');
-        } else {
-          await runPhotoAnalysisPipeline(piiAutoMask, prep.dataUrl);
-        }
-      } catch {
-        showToast('Could not process image file. Loaded demo scan instead.');
-        setCapturedPhotoUrl(PHOTO_CHECK_DEMO_URL);
-        if (useMobileUI) setMobileScreen('m2_photo');
-      }
+      const imageFiles = all.filter((f) => f.type.startsWith('image/'));
+      await handleImageIntake(imageFiles.length > 0 ? imageFiles : [file]);
       return;
     }
 
@@ -367,42 +535,86 @@ export default function App() {
       setDesktopScanning(true);
       if (useMobileUI) setMobileScreen('m3_telemetry');
 
-      let rawText = '';
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        const pdfRes = await extractPdfTextLocally(file);
-        rawText = pdfRes.extractedText;
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const extractStart = Date.now();
+      let decision: LaneADecision;
+      if (isPdf) {
+        decision = await decidePdfLane(file);
       } else {
-        rawText = await file.text();
+        const text = await file.text();
+        const wordCount = text.split(/\s+/).filter(Boolean).length;
+        const readable = text.trim().length >= 40;
+        decision = {
+          lane: readable ? 'A' : 'B',
+          reason: readable ? `plain text document — ${wordCount} words` : 'no readable text found',
+          isScannableVector: readable,
+          pageCount: 1,
+          wordCount,
+          extractedText: readable ? text : '',
+        };
+      }
+      const extractMs = Date.now() - extractStart;
+
+      if (decision.lane === 'B' || decision.extractedText.trim().length === 0) {
+        setDesktopScanning(false);
+        showToast('Scanned PDF detected — no text layer. Photograph the pages to audit them.');
+        if (useMobileUI) {
+          setMobileScreen(capturedPhotoUrl ? 'm2_photo' : 'm1_analyze');
+        } else if (capturedPhotoUrl) {
+          await runPhotoAnalysisPipeline({ strategy: 'none', dataUrls: [capturedPhotoUrl] });
+        }
+        return;
       }
 
-      if (!rawText || rawText.trim().length < 40) {
-        // Fallback so single-page/image PDFs still show crisp demo workspace
-        rawText = PRESET_BLR_RENTAL.clauses.map((c) => c.text).join('\n\n');
+      const maskStart = Date.now();
+      const masked = piiAutoMask ? maskIndianPII(decision.extractedText) : emptyMask(decision.extractedText);
+      const maskMs = Date.now() - maskStart;
+
+      const piiVerdict = checkSafeToSend(masked.maskedText, masked.tokens);
+      setIntakeStats({
+        ...buildLaneAStats(decision, masked.countsByType),
+        blocked: piiVerdict.safeToSend ? undefined : true,
+        blockReason: piiVerdict.safeToSend ? undefined : piiVerdict.reason,
+        gateTimingsMs: { 1: extractMs, 2: maskMs },
+      });
+      if (!piiVerdict.safeToSend) {
+        setDesktopScanning(false);
+        showToast('Upload blocked: possible PII leak — re-scan required');
+        if (useMobileUI) setMobileScreen('m1_analyze');
+        return;
       }
 
-      const masked = piiAutoMask
-        ? maskIndianPII(rawText)
-        : { maskedText: rawText, tokens: [], countsByType: {}, totalMasked: 0 };
-      const outboundClean = assertNoPiiLeak(masked.maskedText, masked.tokens);
-
+      const docTitle = file.name.replace(/\.[^.]+$/, '');
+      const auditStart = Date.now();
       const res = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contract_text: outboundClean,
+          contract_text: masked.maskedText,
           language,
-          title: file.name.replace(/\.[^.]+$/, ''),
+          title: docTitle,
         }),
       });
       const json = await res.json();
+      const auditGateMs = Date.now() - auditStart;
+
+      const groundStart = Date.now();
       const rehydrated = rehydrateParsedObject(json, masked.tokens);
       const nextAudit = hydrateAuditFromApiPayload(
         rehydrated,
         PRESET_BLR_RENTAL,
-        file.name.replace(/\.[^.]+$/, ''),
+        docTitle,
         'A',
         masked.countsByType,
       );
+      const groundGateMs = Date.now() - groundStart;
+
+      setIntakeStats({
+        ...buildLaneAStats(decision, masked.countsByType),
+        packDisplayName: nextAudit.rule_pack_applied.display_name,
+        packMatchPct: nextAudit.rule_pack_applied.match_pct,
+        gateTimingsMs: { 1: extractMs, 2: maskMs, 3: auditGateMs, 4: groundGateMs },
+      });
 
       startTelemetryTicker(() => {
         setActiveAudit(nextAudit);
@@ -435,12 +647,28 @@ export default function App() {
           activeVaultDoc={activeVaultDoc}
           capturedPhotoUrl={capturedPhotoUrl}
           telemetryStage={telemetryStage}
+          intakeStats={intakeStats}
           onCancelTelemetry={cancelTelemetry}
           onStartPhotoFlow={(photoUrl) => {
             setCapturedPhotoUrl(photoUrl || PHOTO_CHECK_DEMO_URL);
             setMobileScreen('m2_photo');
           }}
-          onRunPhotoAnalysis={(strategy) => runPhotoAnalysisPipeline(strategy !== 'none')}
+          onRunPhotoAnalysis={(blackoutStrategy) => {
+            const saved =
+              intakeRef.current && capturedPhotoUrl === intakeRef.current.primaryUrl
+                ? intakeRef.current
+                : null;
+            void runPhotoAnalysisPipeline({
+              strategy: blackoutStrategy,
+              dataUrls: saved
+                ? saved.dataUrls
+                : capturedPhotoUrl
+                  ? [capturedPhotoUrl]
+                  : [],
+              blurPrep: saved?.prep,
+              blurMs: saved?.blurMs,
+            });
+          }}
           onFilesSelected={handleFilesSelected}
           onSelectPreset={handleSelectPreset}
           onOpenVaultItem={handleOpenVaultItem}
@@ -449,6 +677,7 @@ export default function App() {
           onClearVault={handleClearVault}
           onSaveNote={handleSaveNote}
           onExportVaultJson={handleExportVaultJson}
+          onExportBrief={handleExportBrief}
           onOpenSecurityModal={() => setSecurityModalOpen(true)}
           isDesktopPreview={!isMobileViewport && manualMobilePreview}
           onSwitchToDesktop={() => setManualMobilePreview(false)}
@@ -461,7 +690,7 @@ export default function App() {
           language={language}
           onChangeLanguage={setLanguage}
           onBackHome={() => setDesktopView('landing')}
-          onOpenBriefModal={() => setBriefModalOpen(true)}
+          onOpenBriefModal={handleExportBrief}
           onOpenWhatsAppModal={(draft) => {
             setWhatsAppDraft(draft);
             setWhatsAppModalOpen(true);
@@ -549,6 +778,7 @@ export default function App() {
         open={briefModalOpen}
         onClose={() => setBriefModalOpen(false)}
         audit={activeAudit}
+        request={briefRequest}
         onToast={showToast}
       />
       <SecurityAuditModal
