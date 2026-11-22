@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="web_dashboard" name="shell-type"/>
+<title>LawLens Pro — Split X-Ray Workspace</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "tertiary-container": "#a73400",
+            "tertiary": "#7f2500",
+            "on-tertiary-fixed-variant": "#832700",
+            "primary-fixed": "#dce1ff",
+            "on-secondary-container": "#3d4c83",
+            "on-surface": "#131b2e",
+            "on-primary-fixed-variant": "#0039b5",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-highest": "#dae2fd",
+            "surface-container-low": "#f2f3ff",
+            "surface-dim": "#d2d9f4",
+            "outline-variant": "#c4c5d7",
+            "tertiary-fixed-dim": "#ffb59c",
+            "on-secondary-fixed-variant": "#35437b",
+            "error": "#ba1a1a",
+            "on-surface-variant": "#434655",
+            "secondary-fixed-dim": "#b7c4ff",
+            "surface-container-high": "#e2e7ff",
+            "surface": "#faf8ff",
+            "on-error-container": "#93000a",
+            "on-background": "#131b2e",
+            "on-primary-container": "#cad3ff",
+            "outline": "#747686",
+            "on-secondary-fixed": "#03164d",
+            "on-primary-fixed": "#001551",
+            "primary": "#0037b0",
+            "surface-variant": "#dae2fd",
+            "primary-fixed-dim": "#b7c4ff",
+            "on-tertiary-container": "#ffc9b7",
+            "secondary-container": "#b0befe",
+            "on-secondary": "#ffffff",
+            "on-error": "#ffffff",
+            "primary-container": "#1d4ed8",
+            "inverse-on-surface": "#eef0ff",
+            "on-tertiary": "#ffffff",
+            "surface-tint": "#2151da",
+            "surface-bright": "#faf8ff",
+            "secondary": "#4d5b94",
+            "error-container": "#ffdad6",
+            "secondary-fixed": "#dce1ff",
+            "inverse-surface": "#283044",
+            "surface-container": "#eaedff",
+            "on-tertiary-fixed": "#390c00",
+            "tertiary-fixed": "#ffdbcf",
+            "on-primary": "#ffffff",
+            "inverse-primary": "#b7c4ff",
+            "background": "#faf8ff"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+            serif: ["\"Source Serif 4\"", "Georgia", "serif"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @layer base {
+      html, body {
+        margin: 0;
+        padding: 0;
+        background-color: #faf8ff;
+      }
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(116, 118, 134, 0.25);
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(116, 118, 134, 0.45);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-sans antialiased min-h-screen flex flex-col">
+<!-- ================= TOP APP HEADER ================= -->
+<header class="sticky top-0 z-40 bg-surface-container-lowest border-b border-surface-container-high shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
+<!-- Row 1: Brand, Context, Mode Switcher, Primary Actions -->
+<div class="px-6 py-3 flex items-center justify-between gap-4 border-b border-surface-container-low">
+<!-- Left: Logo & Active Document Breadcrumbs -->
+<div class="flex items-center gap-5 min-w-0">
+<a class="flex items-center gap-2.5 shrink-0 group" href="#">
+<div class="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-sm group-hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="text-base font-bold text-on-surface tracking-tight">LawLens</span>
+<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase">Pro</span>
+</div>
+<span class="text-[11px] text-on-surface-variant font-medium leading-none">AI Legal X-Ray</span>
+</div>
+</a>
+<div class="h-6 w-px bg-outline-variant/50 hidden md:block"></div>
+<!-- Document Details -->
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[17px]">description</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<h1 class="text-sm font-semibold text-on-surface truncate max-w-[280px] xl:max-w-md" title="Bengaluru Rental Agreement • Flat 304 Indiranagar">
+                Bengaluru Rental Agreement • Flat 304 Indiranagar
+              </h1>
+<span class="hidden sm:inline-flex text-[11px] text-on-surface-variant px-2 py-0.5 rounded bg-surface-container font-medium shrink-0">
+                3 Pages • 1.4 MB • KA Reg.
+              </span>
+</div>
+<div class="flex items-center gap-2 text-xs">
+<span class="inline-flex items-center gap-1 text-amber-700 font-semibold">
+<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                Score: 62 • Caution
+              </span>
+<span class="text-outline-variant">•</span>
+<span class="text-error font-semibold inline-flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+                ₹1,35,000 Extra Financial Risk
+              </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Center: Segmented View Mode -->
+<div class="hidden lg:flex items-center p-1 rounded-xl bg-surface-container-low border border-surface-container shadow-inner">
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+          Report
+        </button>
+<button class="px-3.5 py-1.5 rounded-lg bg-white text-primary font-bold text-xs shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[15px]">splitscreen</span>
+          Split (Active)
+        </button>
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors" type="button">
+          Original Scan
+        </button>
+</div>
+<!-- Right: Main CTAs & Profile -->
+<div class="flex items-center gap-2.5 shrink-0">
+<button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-xs font-semibold" type="button">
+<span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+<span class="hidden sm:inline">Export 1-Pg Brief</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-all text-xs font-semibold shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">chat</span>
+<span>Draft WhatsApp Message</span>
+</button>
+<div class="h-6 w-px bg-outline-variant/50 ml-1"></div>
+<div class="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-xs">
+          VK
+        </div>
+</div>
+</div>
+<!-- Row 2: Status & Compliance Proof Bar -->
+<div class="px-6 py-2 bg-surface-container-lowest/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+<div class="flex flex-wrap items-center gap-2.5">
+<!-- PII Shield Status -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium">
+<span class="material-symbols-outlined text-[15px] text-emerald-600">shield_lock</span>
+<span>Local PII Shield: <strong>5 tokens masked on-device</strong></span>
+</div>
+<!-- Statutory Rule Match -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant border border-outline-variant/40 font-medium">
+<span class="material-symbols-outlined text-[15px] text-primary">policy</span>
+<span>Karnataka Model Tenancy Act 2021</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-primary font-bold text-[10px]">85% Matched</span>
+</div>
+<!-- Kannada Audio Sync -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-medium">
+<span class="material-symbols-outlined text-[15px]">headphones</span>
+<span>ಕನ್ನಡ (Kannada Audio Synced)</span>
+</div>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant text-[11px]">
+<span class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          Dual Panes Synchronized
+        </span>
+<span class="text-outline-variant">•</span>
+<span>Ephemeral WebWorker</span>
+</div>
+</div>
+</header>
+<!-- ================= 48% / 52% SPLIT WORKSPACE ================= -->
+<main class="flex-1 w-full max-w-[1920px] mx-auto flex flex-col lg:flex-row items-stretch">
+<!-- ================= LEFT COLUMN (48% WIDTH - UNDERSTAND / ACTION RAIL) ================= -->
+<section class="w-full lg:w-[48%] border-b lg:border-b-0 lg:border-r border-surface-container-high bg-surface-container-low/40 flex flex-col">
+<!-- Rail Tabs -->
+<div class="p-4 border-b border-surface-container bg-surface-container-lowest/80 backdrop-blur sticky top-[97px] z-20">
+<nav class="flex items-center gap-1 p-1 rounded-xl bg-surface-container-low border border-surface-container text-xs">
+<button class="flex-1 py-2 px-3 rounded-lg bg-surface-container-lowest text-primary font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all" type="button">
+<span class="material-symbols-outlined text-[17px]">lightbulb</span>
+<span>1. Understand (Active)</span>
+</button>
+<button class="flex-1 py-2 px-3 rounded-lg text-on-surface-variant hover:text-on-surface font-semibold flex items-center justify-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[17px]">balance</span>
+<span>2. Negotiate</span>
+<span class="w-4 h-4 rounded-full bg-secondary-container text-on-secondary-container text-[10px] flex items-center justify-center font-bold">2</span>
+</button>
+<button class="flex-1 py-2 px-3 rounded-lg text-on-surface-variant hover:text-on-surface font-semibold flex items-center justify-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[17px]">notes</span>
+<span>3. Notes &amp; Audio</span>
+</button>
+</nav>
+</div>
+<!-- Left Scrollable Area -->
+<div class="p-6 space-y-6 flex-1 overflow-y-auto custom-scroll pb-24">
+<!-- 1. Hero Financial Exposure Banner / Card -->
+<div class="p-5 rounded-2xl bg-white border border-red-100 shadow-[0_2px_12px_rgba(186,26,26,0.06)] flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="space-y-1">
+<span class="text-[11px] font-bold uppercase tracking-wider text-error">Unchecked Financial Exposure</span>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-black text-error">₹1,35,000</span>
+<span class="text-xs text-on-surface-variant font-medium">above statutory norms</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-xl bg-error-container/60 text-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">account_balance_wallet</span>
+</div>
+</div>
+<!-- Breakdown Tags -->
+<div class="grid grid-cols-3 gap-2 pt-1">
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-surface-container flex flex-col">
+<span class="text-[11px] text-on-surface-variant">Deposit Lock</span>
+<span class="text-sm font-bold text-on-surface">₹2,50,000</span>
+<span class="text-[10px] text-error font-medium">Cap: ₹50,000</span>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-surface-container flex flex-col">
+<span class="text-[11px] text-on-surface-variant">Escalation Hike</span>
+<span class="text-sm font-bold text-on-surface">₹3,750/mo</span>
+<span class="text-[10px] text-amber-700 font-medium">+15% Unilateral</span>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-surface-container flex flex-col">
+<span class="text-[11px] text-on-surface-variant">Exit Risk (Mo 3)</span>
+<span class="text-sm font-bold text-on-surface">₹75,000</span>
+<span class="text-[10px] text-error font-medium">6-Mo Lock-in</span>
+</div>
+</div>
+<div class="p-3 rounded-xl bg-red-50/70 border border-red-100 text-xs text-on-surface-variant leading-relaxed">
+<strong class="text-on-surface font-semibold">Bengaluru Tenancy Alert:</strong> The requested 10-month interest-free deposit and 15% automatic escalation clause heavily exceed Section 10 of Karnataka Model Tenancy Act standards.
+          </div>
+</div>
+<!-- 2. "Top 3 Things You're Agreeing To" Summary Card -->
+<div class="p-5 rounded-2xl bg-white border border-surface-container shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">fact_check</span>
+<h2 class="text-sm font-bold text-on-surface uppercase tracking-wide">Top 3 Things You're Agreeing To</h2>
+</div>
+<span class="text-[11px] px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-medium">Plain English</span>
+</div>
+<div class="space-y-3">
+<!-- Bullet 1 -->
+<div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low transition-colors">
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                1
+              </div>
+<div class="space-y-0.5">
+<p class="text-sm font-bold text-on-surface">₹2,50,000 security deposit exceeds legal cap</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">10 months rent surrendered interest-free upfront. Section 10 KMTA mandates a strict 2-month cap for residential premises.</p>
+</div>
+</div>
+<!-- Bullet 2 -->
+<div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low transition-colors">
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                2
+              </div>
+<div class="space-y-0.5">
+<p class="text-sm font-bold text-on-surface">Mandatory 6-Month Lock-in with ₹75k penalty</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">If job transfer requires vacating at Month 3, you forfeit ₹25,000 deposit penalty plus mandatory 2 months notice rent.</p>
+</div>
+</div>
+<!-- Bullet 3 -->
+<div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low transition-colors">
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                3
+              </div>
+<div class="space-y-0.5">
+<p class="text-sm font-bold text-on-surface">Unilateral 15% rent hike on renewal</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">Landlord can increase base rent to ₹28,750 without negotiating or referencing prevailing market inflation rates.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. "The Way Out Timeline" Exit Penalty Simulation -->
+<div class="p-5 rounded-2xl bg-white border border-surface-container shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Exit Penalty Simulation</span>
+<h3 class="text-base font-bold text-on-surface">The "Way Out" Timeline</h3>
+</div>
+<span class="text-xs px-2.5 py-1 rounded-full bg-surface-container font-mono text-primary font-bold">Clause 8.2</span>
+</div>
+<!-- Stepper / Milestones -->
+<div class="space-y-3 pt-1">
+<div class="flex justify-between text-[11px] text-on-surface-variant font-medium">
+<span>Start (Month 1)</span>
+<span class="text-error font-bold">Month 3 (Active Sim)</span>
+<span class="text-primary font-bold">Month 6 (Lock-in End)</span>
+<span>Month 11 (Expiry)</span>
+</div>
+<!-- Visual Bar -->
+<div class="relative w-full h-3.5 bg-surface-container rounded-full overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1/2 bg-red-100 border-r-2 border-red-500"></div>
+<div class="absolute left-1/2 top-0 bottom-0 w-1/2 bg-emerald-50"></div>
+<!-- Pin for Month 3 -->
+<div class="absolute left-[27%] top-0 bottom-0 w-2.5 bg-error rounded-full ring-2 ring-white"></div>
+</div>
+<!-- Detail Result for Month 3 -->
+<div class="p-3.5 rounded-xl bg-error-container/20 border border-error-container text-xs space-y-1">
+<div class="flex items-center gap-1.5 font-bold text-error">
+<span class="material-symbols-outlined text-[16px]">warning</span>
+<span>Early Exit at Month 3: Immediate ₹75,000 Cash Loss</span>
+</div>
+<p class="text-on-surface-variant leading-relaxed">
+                Breakdown: ₹25,000 1-month penalty deduction + ₹50,000 (2 months mandatory notice rent) payable upfront. After Month 6, early exit fee drops to standard 30-day notice.
+              </p>
+</div>
+</div>
+</div>
+<!-- 4. Analyzed Clauses (3 Flags) -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-sm font-bold text-on-surface uppercase tracking-wide flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[19px]">rule</span>
+<span>Analyzed Clauses (3 Flags)</span>
+</h3>
+<span class="text-xs text-on-surface-variant">Tap to inspect sheet</span>
+</div>
+<!-- Card 1: Critical Overpayment -->
+<article class="p-4 rounded-2xl bg-white border-2 border-error/70 shadow-sm space-y-3 transition-all hover:shadow-md" id="card-deposit">
+<div class="flex items-center justify-between">
+<span class="px-2.5 py-0.5 rounded-full bg-red-100 text-error text-[11px] font-bold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>
+                CRITICAL • Overpayment
+              </span>
+<span class="text-xs text-on-surface-variant font-mono">Lines 42–56</span>
+</div>
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Clause 4.2 &amp; 8.2: 10-Month Security Deposit (₹2,50,000)</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+<strong class="text-primary font-semibold">Statutory Rule:</strong> Karnataka Model Tenancy Act caps residential deposits at <strong class="text-on-surface font-semibold">maximum 2 months rent (₹50,000)</strong>. Overcommit required: <span class="text-error font-bold">₹2,00,000</span>.
+              </p>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low text-xs text-on-surface-variant leading-relaxed">
+<strong class="text-on-surface font-semibold">Risk:</strong> Landlord retains unilateral authority to debit subjective repainting costs and enforce 45-day return lag.
+            </div>
+<div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-semibold shadow-sm transition-colors" onclick="focusClause('target-clause-4-2')" type="button">
+<span class="material-symbols-outlined text-[15px]">visibility</span>
+<span>Jump to Clause in Sheet →</span>
+</button>
+<button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high text-xs font-medium transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px] text-tertiary">volume_up</span>
+<span>Listen Kannada Audio</span>
+</button>
+</div>
+</article>
+<!-- Card 2: Caution Escalation -->
+<article class="p-4 rounded-2xl bg-white border border-amber-300 shadow-sm space-y-3 transition-all hover:shadow-md" id="card-escalation">
+<div class="flex items-center justify-between">
+<span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-bold">
+                CAUTION • Escalation
+              </span>
+<span class="text-xs text-on-surface-variant font-mono">Line 104</span>
+</div>
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Clause 14.1: Unilateral 15% Rent Escalation</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                Standard Bengaluru locality indexation is 5% to 8% with 90 days mutual notice. This contract enforces an automatic 15% (₹3,750/mo increase) on Day 331 without tenant assent.
+              </p>
+</div>
+<div class="flex items-center justify-between pt-1">
+<button class="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1" onclick="focusClause('target-clause-14-1')" type="button">
+<span>Inspect in Document →</span>
+</button>
+<span class="text-[11px] text-on-surface-variant font-medium">Impact: +₹45,000/yr</span>
+</div>
+</article>
+<!-- Card 3: Missing Essential Clause -->
+<article class="p-4 rounded-2xl bg-white border-l-4 border-error border-y border-r border-surface-container shadow-sm space-y-3">
+<div class="flex items-center justify-between">
+<span class="px-2.5 py-0.5 rounded-full bg-rose-50 text-error text-[11px] font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">error</span>
+                MISSING CLAUSE
+              </span>
+<span class="text-[11px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-medium">Contract Gap</span>
+</div>
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Maintenance &amp; Structural Repair SLA</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                Zero mention of landlord liability for external seepage, core electrical lines, or elevator dues. In Karnataka, major structural repairs legally remain the lessor's duty.
+              </p>
+</div>
+<div class="pt-1">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high text-xs font-semibold transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">add_circle</span>
+<span>Insert Recommended Addendum</span>
+</button>
+</div>
+</article>
+</div>
+</div>
+<!-- Quick Audio Walkthrough Footer Bar -->
+<div class="p-3 bg-white/95 border-t border-surface-container backdrop-blur sticky bottom-0 z-30 flex items-center justify-between gap-3 shadow-sm">
+<div class="flex items-center gap-3 min-w-0">
+<button class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shrink-0 shadow hover:bg-primary/90 transition-transform active:scale-95" title="Play Kannada audio breakdown" type="button">
+<span class="material-symbols-outlined text-[18px]">play_arrow</span>
+</button>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-bold text-on-surface truncate">Audio Walkthrough in Kannada</span>
+<span class="text-[11px] text-on-surface-variant truncate">1:14 min • Deposit cap &amp; exit trap warnings</span>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-container text-on-surface font-semibold">1.0x</span>
+</div>
+</div>
+</section>
+<!-- ================= RIGHT COLUMN (52% WIDTH - RECONSTRUCTED CONTRACT SHEET) ================= -->
+<section class="w-full lg:w-[52%] bg-surface-container-high/30 flex flex-col">
+<!-- Sheet Controls Toolbar -->
+<div class="p-3.5 bg-white border-b border-surface-container sticky top-[97px] z-20 flex flex-wrap items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+<!-- Switcher: Reconstructed Text vs Original Scan -->
+<div class="inline-flex items-center p-1 rounded-xl bg-surface-container-low border border-surface-container text-xs">
+<button class="px-3 py-1 rounded-lg bg-white text-primary font-bold shadow-sm flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[15px]">subject</span>
+<span>Reconstructed Text (Active)</span>
+</button>
+<button class="px-3 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[15px]">image</span>
+<span>Original Scan Photo</span>
+</button>
+</div>
+<!-- Zoom & Legend -->
+<div class="flex items-center gap-3">
+<!-- Zoom Controls -->
+<div class="flex items-center bg-surface-container-low px-2 py-1 rounded-lg text-xs font-mono text-on-surface">
+<button class="px-1 hover:text-primary font-bold" title="Zoom out" type="button">-</button>
+<span class="px-2 font-bold">100%</span>
+<button class="px-1 hover:text-primary font-bold" title="Zoom in" type="button">+</button>
+<span class="mx-1 text-outline-variant">|</span>
+<button class="hover:text-primary font-bold text-[11px]" type="button">Fit</button>
+</div>
+<!-- Page Counter -->
+<span class="text-xs font-mono text-on-surface-variant font-medium">Page 2 of 3</span>
+</div>
+<!-- Severity Legend Strip -->
+<div class="w-full pt-1 flex items-center justify-between text-[11px] text-on-surface-variant border-t border-surface-container-low">
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center gap-1 font-medium">
+<span class="w-2 h-2 rounded-full bg-error"></span> Critical
+            </span>
+<span class="inline-flex items-center gap-1 font-medium">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span> Caution
+            </span>
+<span class="inline-flex items-center gap-1 font-medium">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Safe
+            </span>
+</div>
+<span class="inline-flex items-center gap-1 text-sky-800 bg-sky-50 px-2 py-0.5 rounded font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> OCR Confidence 99.8%
+          </span>
+</div>
+</div>
+<!-- Paper Document Canvas Area -->
+<div class="p-6 lg:p-8 flex justify-center overflow-y-auto custom-scroll flex-1">
+<!-- Reconstructed Sheet Canvas (Authentic A4 Paper Styling) -->
+<article class="w-full max-w-[760px] bg-white rounded-md shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-surface-container p-8 sm:p-12 flex flex-col gap-6 text-[#1E293B] relative font-serif">
+<!-- Document Header / Stamp Watermark -->
+<div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant tracking-wider border-b border-surface-container pb-4 font-sans">
+<span>KARNATAKA REG. ACT NO. 15 // DOC ID: BLR-IND-2024-8049</span>
+<span class="text-primary font-semibold">STAMP VALUE: ₹500 PAID</span>
+</div>
+<!-- Document Title -->
+<div class="text-center space-y-1 my-2">
+<h2 class="text-xl sm:text-2xl font-bold tracking-tight text-on-surface font-serif">
+              RESIDENTIAL LEASE AGREEMENT
+            </h2>
+<p class="text-xs uppercase tracking-widest text-on-surface-variant font-sans font-medium">
+              (INDIRANAGAR / WARD 112, BENGALURU URBAN)
+            </p>
+</div>
+<!-- Recitals Excerpt -->
+<p class="text-[15px] leading-relaxed text-justify text-on-surface">
+            THIS AGREEMENT is entered into on this 1st day of October, 2024 between 
+            <span class="font-sans text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono font-semibold">[LESSOR_NAME_REDACTED]</span>, 
+            hereinafter referred to as the "Lessor", and 
+            <span class="font-sans text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono font-semibold">[LESSEE_NAME_REDACTED]</span>, 
+            hereinafter referred to as the "Lessee".
+          </p>
+<!-- Clause 4.1: Safe Baseline -->
+<div class="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/80 transition-colors">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+                Clause 4.1 • Safe Baseline
+              </span>
+<span class="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
+</div>
+<p class="text-[15px] leading-relaxed text-emerald-950">
+<strong>4.1 Monthly Rent:</strong> The Tenant shall pay to the Landlord a monthly rent of <strong>₹25,000/- (Rupees Twenty-Five Thousand Only)</strong> on or before the 5th day of each successive calendar month through direct NEFT/RTGS bank transfer. Utility tariffs including BESCOM power and BWSSB water shall be billed strictly against monthly sub-meter usage.
+            </p>
+</div>
+<!-- Clause 4.2: Critical Risk with Active Glow & OCR Callout -->
+<div class="p-4 rounded-xl bg-red-50/90 border-2 border-error transition-all duration-300 shadow-sm" id="target-clause-4-2">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-error uppercase tracking-wider flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+                Clause 4.2 • Critical Discrepancy
+              </span>
+<span class="text-[11px] bg-red-100 text-error px-2 py-0.5 rounded font-mono font-bold">
+                Exceeds KRTA Sec 10
+              </span>
+</div>
+<p class="text-[15px] leading-relaxed text-red-950">
+<strong>4.2 Security Deposit:</strong> The Tenant shall deposit with the Landlord an interest-free refundable caution deposit of 
+              <span class="bg-sky-100 text-sky-900 px-1.5 py-0.5 rounded underline decoration-sky-400 decoration-dashed cursor-pointer font-bold font-sans" title="OCR verification confidence: 99.8%">
+                ₹2,50,000/-
+              </span>
+<em>(Rupees Two Lakhs Fifty Thousand Only)</em> prior to the handover of keys. The Landlord reserves the absolute and unquestioned right to deduct repainting charges, deep cleaning debits, and any unspecified breakages prior to returning the balance within 45 days post physical handover.
+            </p>
+<div class="mt-2.5 pt-2 border-t border-red-200/60 font-sans text-xs flex flex-wrap items-center justify-between text-on-surface-variant gap-2">
+<span class="text-error font-medium">⚠️ 10-Month deposit is 500% over statutory 2-month threshold</span>
+<span class="text-sky-800 font-mono text-[11px] bg-sky-50 px-2 py-0.5 rounded">OCR Confidence: 99.8%</span>
+</div>
+</div>
+<!-- Clause 8.2: Lock-in Period & Early Termination -->
+<div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 transition-all duration-300" id="target-clause-8-2">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                Clause 8.2 • High Penalty Lock-In
+              </span>
+<span class="text-xs text-amber-800 font-sans font-semibold">Enforceability: Partial</span>
+</div>
+<p class="text-[15px] leading-relaxed text-amber-950">
+<strong>8.2 Lock-in Period &amp; Early Termination:</strong> Neither party shall be entitled to terminate this agreement during the initial <strong>6 (six) months</strong> ("Lock-in Window"). In the event that the Lessee desires to vacate the leased premises prior to the expiration of the said six-month lock-in, the Lessee shall forfeit one full month's rental sum (₹25,000/-) as liquidated damages and remain obligated to satisfy two (2) months mandatory advance notice fee.
+            </p>
+</div>
+<!-- Clause 14.1: Escalation Caution -->
+<div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 transition-all duration-300" id="target-clause-14-1">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-amber-900 uppercase tracking-wider">
+                Clause 14.1 • Caution Escalation
+              </span>
+<span class="text-[11px] text-amber-900 bg-amber-100 px-2 py-0.5 rounded font-mono font-bold">+15% Unilateral</span>
+</div>
+<p class="text-[15px] leading-relaxed text-amber-950">
+<strong>14.1 Escalation:</strong> Upon the successful completion of the initial eleven (11) month tenure, if mutually renewed, the Lessor reserves the sole right to automatically escalate the base monthly rent by <strong>15% (fifteen percent)</strong> without separate arbitration or comparative locality index assessment.
+            </p>
+</div>
+<!-- Missing Annexure Notice Banner -->
+<div class="p-4 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950 flex items-start gap-3 my-2 font-sans shadow-sm">
+<span class="material-symbols-outlined text-[24px] text-amber-800 shrink-0">report_problem</span>
+<div class="space-y-1">
+<span class="text-sm font-bold text-amber-900">Missing Annexure A Detected</span>
+<p class="text-xs text-amber-950 leading-relaxed">
+                Maintenance fee formula and sinking fund splits are explicitly referenced in Clause 6.2, but <strong>Annexure A is missing</strong> from your scanned 3-page upload. Ask the landlord for the complete schedule before signing.
+              </p>
+</div>
+</div>
+<!-- Signatures Section -->
+<div class="pt-10 mt-4 border-t border-surface-container font-sans text-xs text-on-surface-variant flex items-center justify-between">
+<div class="space-y-1">
+<p class="font-bold text-on-surface">LESSOR SIGNATURE</p>
+<div class="w-48 h-0.5 bg-outline-variant/40 mt-6"></div>
+<p class="text-[11px] text-on-surface-variant font-mono">[Signed via Aadhaar eSign]</p>
+</div>
+<div class="space-y-1 text-right">
+<p class="font-bold text-on-surface">LESSEE SIGNATURE</p>
+<div class="w-48 h-0.5 bg-outline-variant/40 mt-6"></div>
+<p class="text-[11px] text-on-surface-variant font-mono">[Awaiting Counter-Signature]</p>
+</div>
+</div>
+</article>
+</div>
+</section>
+</main>
+<!-- Interactive Synchronization Script -->
+<script>
+    function focusClause(elementId) {
+      const target = document.getElementById(elementId);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('ring-4', 'ring-primary', 'shadow-xl');
+        setTimeout(() => {
+          target.classList.remove('ring-4', 'ring-primary', 'shadow-xl');
+        }, 2200);
+      }
+    }
+  </script>
+</body></html>

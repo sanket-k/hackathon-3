@@ -1,0 +1,1524 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<meta content="web_dashboard" name="shell-type">
+<title>LawLens Pro — Split X-Ray Workspace</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@300;400;500;600;700;800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "tertiary-container": "#a73400",
+            "tertiary": "#7f2500",
+            "on-tertiary-fixed-variant": "#832700",
+            "primary-fixed": "#dce1ff",
+            "on-secondary-container": "#3d4c83",
+            "on-surface": "#131b2e",
+            "on-primary-fixed-variant": "#0039b5",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-highest": "#dae2fd",
+            "surface-container-low": "#f2f3ff",
+            "surface-dim": "#d2d9f4",
+            "outline-variant": "#c4c5d7",
+            "tertiary-fixed-dim": "#ffb59c",
+            "on-secondary-fixed-variant": "#35437b",
+            "error": "#ba1a1a",
+            "on-surface-variant": "#434655",
+            "secondary-fixed-dim": "#b7c4ff",
+            "surface-container-high": "#e2e7ff",
+            "surface": "#faf8ff",
+            "on-error-container": "#93000a",
+            "on-background": "#131b2e",
+            "on-primary-container": "#cad3ff",
+            "outline": "#747686",
+            "on-secondary-fixed": "#03164d",
+            "on-primary-fixed": "#001551",
+            "primary": "#0037b0",
+            "surface-variant": "#dae2fd",
+            "primary-fixed-dim": "#b7c4ff",
+            "on-tertiary-container": "#ffc9b7",
+            "secondary-container": "#b0befe",
+            "on-secondary": "#ffffff",
+            "on-error": "#ffffff",
+            "primary-container": "#1d4ed8",
+            "inverse-on-surface": "#eef0ff",
+            "on-tertiary": "#ffffff",
+            "surface-tint": "#2151da",
+            "surface-bright": "#faf8ff",
+            "secondary": "#4d5b94",
+            "error-container": "#ffdad6",
+            "secondary-fixed": "#dce1ff",
+            "inverse-surface": "#283044",
+            "surface-container": "#eaedff",
+            "on-tertiary-fixed": "#390c00",
+            "tertiary-fixed": "#ffdbcf",
+            "on-primary": "#ffffff",
+            "inverse-primary": "#b7c4ff",
+            "background": "#faf8ff"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+            serif: ["\"Source Serif 4\"", "Georgia", "serif"],
+            typewriter: ["\"Courier Prime\"", "Courier", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @layer base {
+      html, body {
+        margin: 0;
+        padding: 0;
+        background-color: #faf8ff;
+      }
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(116, 118, 134, 0.25);
+      border-radius: 9999px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(116, 118, 134, 0.45);
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.6); }
+      70% { box-shadow: 0 0 0 12px rgba(29, 78, 216, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0); }
+    }
+    .highlight-active {
+      animation: pulse-ring 1.8s infinite;
+      outline: 3px solid #1d4ed8 !important;
+    }
+    .stamp-pattern {
+      background: repeating-linear-gradient(45deg, #fbf7ee, #fbf7ee 10px, #f7f1e1 10px, #f7f1e1 20px);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-sans antialiased min-h-screen flex flex-col relative select-none">
+<!-- Toast Notification -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2.5 px-4 py-3 rounded-xl bg-on-surface text-white shadow-2xl text-xs font-semibold" id="toastNotification">
+<span class="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
+<span id="toastMessage">Copied to clipboard!</span>
+</div>
+<!-- ================= TOP APP HEADER ================= -->
+<header class="sticky top-0 z-40 bg-surface-container-lowest border-b border-surface-container-high shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
+<!-- Row 1: Brand, Context, Mode Switcher, Primary Actions -->
+<div class="px-4 lg:px-6 py-3 flex items-center justify-between gap-4 border-b border-surface-container-low">
+<!-- Left: Logo & Active Document Breadcrumbs -->
+<div class="flex items-center gap-5 min-w-0">
+<a class="flex items-center gap-2.5 shrink-0 group" href="javascript:void(0)" onclick="switchWorkspaceTab('understand')">
+<div class="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-sm group-hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="text-base font-bold text-on-surface tracking-tight">LawLens</span>
+<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase">Pro</span>
+</div>
+<span class="text-[11px] text-on-surface-variant font-medium leading-none">AI Legal X-Ray</span>
+</div>
+</a>
+<div class="h-6 w-px bg-outline-variant/50 hidden md:block"></div>
+<!-- Document Details -->
+<div class="flex items-center gap-2.5 min-w-0">
+<div class="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[17px]">description</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<h1 class="text-sm font-semibold text-on-surface truncate max-w-[240px] xl:max-w-md" title="Bengaluru Rental Agreement • Flat 304 Indiranagar">
+              Bengaluru Rental Agreement • Flat 304 Indiranagar
+            </h1>
+<span class="hidden sm:inline-flex text-[11px] text-on-surface-variant px-2 py-0.5 rounded bg-surface-container font-medium shrink-0">
+              3 Pages • 1.4 MB • KA Reg.
+            </span>
+</div>
+<div class="flex items-center gap-2 text-xs">
+<button class="inline-flex items-center gap-1 text-amber-700 font-semibold hover:underline text-left" onclick="openBriefModal()">
+<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              Score: 62 • Caution
+            </button>
+<span class="text-outline-variant">•</span>
+<span class="text-error font-semibold inline-flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+              ₹1,35,000 Extra Financial Risk
+            </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Center: Segmented View Mode -->
+<div class="hidden lg:flex items-center p-1 rounded-xl bg-surface-container-low border border-surface-container shadow-inner">
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors" onclick="setLayoutView('report')" id="viewBtnReport" type="button">
+        Report
+      </button>
+<button class="px-3.5 py-1.5 rounded-lg bg-white text-primary font-bold text-xs shadow-sm flex items-center gap-1.5" id="viewBtnSplit" onclick="setLayoutView('split')" type="button">
+<span class="material-symbols-outlined text-[15px]">splitscreen</span>
+        Split (Active)
+      </button>
+<button class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors" id="viewBtnDoc" onclick="setLayoutView('doc')" type="button">
+        Original Scan
+      </button>
+</div>
+<!-- Right: Main CTAs & Profile -->
+<div class="flex items-center gap-2.5 shrink-0">
+<button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-xs font-semibold cursor-pointer active:scale-95" onclick="openBriefModal()" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">picture_as_pdf</span>
+<span class="hidden sm:inline">Export 1-Pg Brief</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-all text-xs font-semibold shadow-sm cursor-pointer active:scale-95" onclick="openWhatsAppModal()" type="button">
+<span class="material-symbols-outlined text-[16px]">chat</span>
+<span>Draft WhatsApp Message</span>
+</button>
+<div class="h-6 w-px bg-outline-variant/50 ml-1 hidden sm:block"></div>
+<div class="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-xs" title="Tenant Account: Varun Kumar">
+        VK
+      </div>
+</div>
+</div>
+<!-- Row 2: Status & Compliance Proof Bar -->
+<div class="px-4 lg:px-6 py-2 bg-surface-container-lowest/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+<div class="flex flex-wrap items-center gap-2.5">
+<!-- PII Shield Status Button (Clickable -> Opens Audit Modal) -->
+<button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/80 font-medium hover:bg-emerald-100/70 transition-colors cursor-pointer group" onclick="openSecurityModal()" title="Click to view Local PII Privacy Audit">
+<span class="material-symbols-outlined text-[15px] text-emerald-600 group-hover:scale-110 transition-transform">shield_lock</span>
+<span>Local PII Shield: <strong>5 tokens masked on-device</strong></span>
+<span class="material-symbols-outlined text-[13px] opacity-60">info</span>
+</button>
+<!-- Statutory Rule Match -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container text-on-surface-variant border border-outline-variant/40 font-medium">
+<span class="material-symbols-outlined text-[15px] text-primary">policy</span>
+<span>Karnataka Model Tenancy Act 2021</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high text-primary font-bold text-[10px]">85% Matched</span>
+</div>
+<!-- Kannada Audio Sync -->
+<button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed font-medium hover:bg-secondary-fixed-dim transition-colors" onclick="toggleAudio()">
+<span class="material-symbols-outlined text-[15px]">headphones</span>
+<span>ಕನ್ನಡ (Kannada Audio Synced)</span>
+</button>
+</div>
+<div class="hidden sm:flex items-center gap-3 text-on-surface-variant text-[11px]">
+<span class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        Dual Panes Synchronized
+      </span>
+<span class="text-outline-variant">•</span>
+<span class="cursor-pointer hover:underline" onclick="openSecurityModal()">Ephemeral WebWorker</span>
+</div>
+</div>
+</header>
+<!-- ================= 48% / 52% SPLIT WORKSPACE ================= -->
+<main class="flex-1 w-full max-w-[1920px] mx-auto flex flex-col lg:flex-row items-stretch" id="workspaceContainer">
+<!-- ================= LEFT COLUMN (UNDERSTAND / ACTION RAIL) ================= -->
+<section class="w-full lg:w-[48%] border-b lg:border-b-0 lg:border-r border-surface-container-high bg-surface-container-low/40 flex flex-col transition-all duration-300" id="leftPane">
+<!-- Rail Tabs -->
+<div class="p-4 border-b border-surface-container bg-surface-container-lowest/80 backdrop-blur sticky top-[97px] z-20">
+<nav class="flex items-center gap-1 p-1 rounded-xl bg-surface-container-low border border-surface-container text-xs">
+<button class="flex-1 py-2 px-3 rounded-lg bg-surface-container-lowest text-primary font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all" id="tabBtnUnderstand" onclick="switchWorkspaceTab('understand')" type="button">
+<span class="material-symbols-outlined text-[17px]">lightbulb</span>
+<span class="truncate">1. Understand</span>
+</button>
+<button class="flex-1 py-2 px-3 rounded-lg text-on-surface-variant hover:text-on-surface font-semibold flex items-center justify-center gap-1.5 transition-colors" id="tabBtnNegotiate" onclick="switchWorkspaceTab('negotiate')" type="button">
+<span class="material-symbols-outlined text-[17px]">balance</span>
+<span class="truncate">2. Negotiate</span>
+<span class="w-4 h-4 rounded-full bg-secondary-container text-on-secondary-container text-[10px] flex items-center justify-center font-bold" id="disputeBadge">2</span>
+</button>
+<button class="flex-1 py-2 px-3 rounded-lg text-on-surface-variant hover:text-on-surface font-semibold flex items-center justify-center gap-1.5 transition-colors" id="tabBtnNotes" onclick="switchWorkspaceTab('notes')" type="button">
+<span class="material-symbols-outlined text-[17px]">notes</span>
+<span class="truncate">3. Notes &amp; Audio</span>
+</button>
+</nav>
+</div>
+<!-- TAB 1: UNDERSTAND VIEW CONTENT -->
+<div class="p-6 space-y-6 flex-1 overflow-y-auto custom-scroll pb-24" id="tabViewUnderstand">
+<!-- 1. Hero Financial Exposure Banner / Card -->
+<div class="p-5 rounded-2xl bg-white border border-red-100 shadow-[0_2px_12px_rgba(186,26,26,0.06)] flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="space-y-1">
+<span class="text-[11px] font-bold uppercase tracking-wider text-error">Unchecked Financial Exposure</span>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-black text-error">₹1,35,000</span>
+<span class="text-xs text-on-surface-variant font-medium">above statutory norms</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-xl bg-error-container/60 text-error flex items-center justify-center">
+<span class="material-symbols-outlined text-[22px]">account_balance_wallet</span>
+</div>
+</div>
+<!-- Breakdown Tags -->
+<div class="grid grid-cols-3 gap-2 pt-1">
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-surface-container flex flex-col cursor-pointer hover:border-primary/40 transition-colors" onclick="focusClause('target-clause-4-2')">
+<span class="text-[11px] text-on-surface-variant">Deposit Lock</span>
+<span class="text-sm font-bold text-on-surface">₹2,50,000</span>
+<span class="text-[10px] text-error font-medium">Cap: ₹50,000</span>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-surface-container flex flex-col cursor-pointer hover:border-primary/40 transition-colors" onclick="focusClause('target-clause-14-1')">
+<span class="text-[11px] text-on-surface-variant">Escalation Hike</span>
+<span class="text-sm font-bold text-on-surface">₹3,750/mo</span>
+<span class="text-[10px] text-amber-700 font-medium">+15% Unilateral</span>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low border border-surface-container flex flex-col cursor-pointer hover:border-primary/40 transition-colors" onclick="focusClause('target-clause-8-2')">
+<span class="text-[11px] text-on-surface-variant">Exit Risk (Mo 3)</span>
+<span class="text-sm font-bold text-on-surface">₹75,000</span>
+<span class="text-[10px] text-error font-medium">6-Mo Lock-in</span>
+</div>
+</div>
+<div class="p-3 rounded-xl bg-red-50/70 border border-red-100 text-xs text-on-surface-variant leading-relaxed">
+<strong class="text-on-surface font-semibold">Bengaluru Tenancy Alert:</strong> The requested 10-month interest-free deposit and 15% automatic escalation clause heavily exceed Section 10 of Karnataka Model Tenancy Act standards.
+        </div>
+</div>
+<!-- 2. "Top 3 Things You're Agreeing To" Summary Card -->
+<div class="p-5 rounded-2xl bg-white border border-surface-container shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">fact_check</span>
+<h2 class="text-sm font-bold text-on-surface uppercase tracking-wide">Top 3 Things You're Agreeing To</h2>
+</div>
+<span class="text-[11px] px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-medium">Plain English</span>
+</div>
+<div class="space-y-3">
+<!-- Bullet 1 -->
+<div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low transition-colors cursor-pointer" onclick="focusClause('target-clause-4-2')">
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+              1
+            </div>
+<div class="space-y-0.5">
+<p class="text-sm font-bold text-on-surface">₹2,50,000 security deposit exceeds legal cap</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">10 months rent surrendered interest-free upfront. Section 10 KMTA mandates a strict 2-month cap for residential premises.</p>
+</div>
+</div>
+<!-- Bullet 2 -->
+<div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low transition-colors cursor-pointer" onclick="focusClause('target-clause-8-2')">
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+              2
+            </div>
+<div class="space-y-0.5">
+<p class="text-sm font-bold text-on-surface">Mandatory 6-Month Lock-in with ₹75k penalty</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">If job transfer requires vacating at Month 3, you forfeit ₹25,000 deposit penalty plus mandatory 2 months notice rent.</p>
+</div>
+</div>
+<!-- Bullet 3 -->
+<div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low transition-colors cursor-pointer" onclick="focusClause('target-clause-14-1')">
+<div class="w-6 h-6 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+              3
+            </div>
+<div class="space-y-0.5">
+<p class="text-sm font-bold text-on-surface">Unilateral 15% rent hike on renewal</p>
+<p class="text-xs text-on-surface-variant leading-relaxed">Landlord can increase base rent to ₹28,750 without negotiating or referencing prevailing market inflation rates.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. "The Way Out Timeline" Exit Penalty Simulation -->
+<div class="p-5 rounded-2xl bg-white border border-surface-container shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Exit Penalty Simulation</span>
+<h3 class="text-base font-bold text-on-surface">The "Way Out" Timeline</h3>
+</div>
+<span class="text-xs px-2.5 py-1 rounded-full bg-surface-container font-mono text-primary font-bold">Clause 8.2</span>
+</div>
+<!-- Stepper / Milestones -->
+<div class="space-y-3 pt-1">
+<div class="flex justify-between text-[11px] text-on-surface-variant font-medium">
+<span class="cursor-pointer hover:text-primary" onclick="setExitMonth(1)">Start (M1)</span>
+<span class="text-error font-bold cursor-pointer" id="exitLabelM3" onclick="setExitMonth(3)">Month 3 (Active)</span>
+<span class="text-primary font-bold cursor-pointer hover:text-primary" id="exitLabelM6" onclick="setExitMonth(6)">Month 6 (Lock-in)</span>
+<span class="cursor-pointer hover:text-primary" onclick="setExitMonth(11)">Month 11 (Expiry)</span>
+</div>
+<!-- Interactive Visual Bar Slider -->
+<div class="relative w-full h-4 bg-surface-container rounded-full overflow-hidden cursor-pointer" onclick="clickTimeline(event)">
+<div class="absolute left-0 top-0 bottom-0 w-1/2 bg-red-100 border-r-2 border-red-500"></div>
+<div class="absolute left-1/2 top-0 bottom-0 w-1/2 bg-emerald-50"></div>
+<!-- Pin -->
+<div class="absolute left-[27%] top-0 bottom-0 w-3 bg-error rounded-full ring-2 ring-white shadow-md transition-all duration-200" id="timelinePin"></div>
+</div>
+<!-- Detail Result -->
+<div class="p-3.5 rounded-xl bg-error-container/20 border border-error-container text-xs space-y-1" id="exitDetailCard">
+<div class="flex items-center gap-1.5 font-bold text-error" id="exitDetailHeading">
+<span class="material-symbols-outlined text-[16px]">warning</span>
+<span>Early Exit at Month 3: Immediate ₹75,000 Cash Loss</span>
+</div>
+<p class="text-on-surface-variant leading-relaxed" id="exitDetailText">
+              Breakdown: ₹25,000 1-month penalty deduction + ₹50,000 (2 months mandatory notice rent) payable upfront. After Month 6, early exit fee drops to standard 30-day notice.
+            </p>
+</div>
+</div>
+</div>
+<!-- 4. Analyzed Clauses (3 Flags) -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-sm font-bold text-on-surface uppercase tracking-wide flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[19px]">rule</span>
+<span>Analyzed Clauses (3 Flags)</span>
+</h3>
+<span class="text-xs text-on-surface-variant">Tap to inspect sheet</span>
+</div>
+<!-- Card 1: Critical Overpayment -->
+<article class="p-4 rounded-2xl bg-white border-2 border-error/70 shadow-sm space-y-3 transition-all hover:shadow-md" id="card-deposit">
+<div class="flex items-center justify-between">
+<span class="px-2.5 py-0.5 rounded-full bg-red-100 text-error text-[11px] font-bold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>
+              CRITICAL • Overpayment
+            </span>
+<span class="text-xs text-on-surface-variant font-mono">Lines 42–56</span>
+</div>
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Clause 4.2 &amp; 8.2: 10-Month Security Deposit (₹2,50,000)</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+<strong class="text-primary font-semibold">Statutory Rule:</strong> Karnataka Model Tenancy Act caps residential deposits at <strong class="text-on-surface font-semibold">maximum 2 months rent (₹50,000)</strong>. Overcommit required: <span class="text-error font-bold">₹2,00,000</span>.
+            </p>
+</div>
+<div class="p-2.5 rounded-xl bg-surface-container-low text-xs text-on-surface-variant leading-relaxed">
+<strong class="text-on-surface font-semibold">Risk:</strong> Landlord retains unilateral authority to debit subjective repainting costs and enforce 45-day return lag.
+          </div>
+<div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 text-xs font-semibold shadow-sm transition-colors cursor-pointer" onclick="focusClause('target-clause-4-2')" type="button">
+<span class="material-symbols-outlined text-[15px]">visibility</span>
+<span>Jump to Clause in Sheet →</span>
+</button>
+<button class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high text-xs font-medium transition-colors cursor-pointer" onclick="playAudioSpecific('Clause 4.2 Security Deposit')" type="button">
+<span class="material-symbols-outlined text-[15px] text-tertiary">volume_up</span>
+<span>Listen Kannada Audio</span>
+</button>
+</div>
+</article>
+<!-- Card 2: Caution Escalation -->
+<article class="p-4 rounded-2xl bg-white border border-amber-300 shadow-sm space-y-3 transition-all hover:shadow-md" id="card-escalation">
+<div class="flex items-center justify-between">
+<span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[11px] font-bold">
+              CAUTION • Escalation
+            </span>
+<span class="text-xs text-on-surface-variant font-mono">Line 104</span>
+</div>
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Clause 14.1: Unilateral 15% Rent Escalation</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+              Standard Bengaluru locality indexation is 5% to 8% with 90 days mutual notice. This contract enforces an automatic 15% (₹3,750/mo increase) on Day 331 without tenant assent.
+            </p>
+</div>
+<div class="flex items-center justify-between pt-1">
+<button class="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer" onclick="focusClause('target-clause-14-1')" type="button">
+<span>Inspect in Document →</span>
+</button>
+<span class="text-[11px] text-on-surface-variant font-medium">Impact: +₹45,000/yr</span>
+</div>
+</article>
+<!-- Card 3: Missing Essential Clause -->
+<article class="p-4 rounded-2xl bg-white border-l-4 border-error border-y border-r border-surface-container shadow-sm space-y-3">
+<div class="flex items-center justify-between">
+<span class="px-2.5 py-0.5 rounded-full bg-rose-50 text-error text-[11px] font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">error</span>
+              MISSING CLAUSE
+            </span>
+<span class="text-[11px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-medium">Contract Gap</span>
+</div>
+<div class="space-y-1">
+<h4 class="text-sm font-bold text-on-surface">Maintenance &amp; Structural Repair SLA</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+              Zero mention of landlord liability for external seepage, core electrical lines, or elevator dues. In Karnataka, major structural repairs legally remain the lessor's duty.
+            </p>
+</div>
+<div class="pt-1">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high text-xs font-semibold transition-colors cursor-pointer" onclick="switchWorkspaceTab('negotiate')" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">add_circle</span>
+<span>Insert Recommended Addendum in Negotiate Tab →</span>
+</button>
+</div>
+</article>
+</div>
+</div>
+<!-- TAB 2: NEGOTIATE VIEW CONTENT -->
+<div class="p-6 space-y-6 flex-1 overflow-y-auto custom-scroll pb-24 hidden" id="tabViewNegotiate">
+<div class="p-5 rounded-2xl bg-white border border-surface-container shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[22px] text-primary">tune</span>
+<div>
+<h2 class="text-base font-bold text-on-surface">Counter-Proposal Composer</h2>
+<p class="text-xs text-on-surface-variant">Select dispute items to dynamically generate the amendment draft.</p>
+</div>
+</div>
+<span class="text-xs px-2.5 py-1 rounded-full bg-primary/10 text-primary font-bold">Auto-Sync</span>
+</div>
+<!-- Tone Selector -->
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface uppercase tracking-wide">Negotiation Tone</label>
+<div class="grid grid-cols-2 gap-2">
+<button class="p-2.5 rounded-xl border-2 border-primary bg-primary/5 text-primary text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition-all" id="toneBtnPolite" onclick="setNegotiationTone('polite')">
+<span class="material-symbols-outlined text-[16px]">sentiment_satisfied</span>
+<span>Polite &amp; Collaborative</span>
+</button>
+<button class="p-2.5 rounded-xl border border-surface-container text-on-surface-variant text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition-all hover:bg-surface-container" id="toneBtnStrict" onclick="setNegotiationTone('strict')">
+<span class="material-symbols-outlined text-[16px]">gavel</span>
+<span>Strict Statutory Notice</span>
+</button>
+</div>
+</div>
+<!-- Checklist of Clauses to Dispute -->
+<div class="space-y-2.5 pt-1">
+<label class="text-xs font-bold text-on-surface uppercase tracking-wide">Select Items to Challenge</label>
+<!-- Item 1: Deposit -->
+<label class="flex items-start gap-3 p-3 rounded-xl border border-surface-container hover:bg-surface-container-low transition-colors cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary mt-0.5" id="negDeposit" onchange="updateNegotiationDraft()" type="checkbox">
+<div class="space-y-0.5 flex-1">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface">Cap Security Deposit at 2 Months (₹50k)</span>
+<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Saves ₹2,00,000 lock-in</span>
+</div>
+<p class="text-[11px] text-on-surface-variant">Cite Section 10 of Karnataka Model Tenancy Act 2021.</p>
+</div>
+</label>
+<!-- Item 2: Escalation -->
+<label class="flex items-start gap-3 p-3 rounded-xl border border-surface-container hover:bg-surface-container-low transition-colors cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary mt-0.5" id="negEscalation" onchange="updateNegotiationDraft()" type="checkbox">
+<div class="space-y-0.5 flex-1">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface">Limit Renewal Escalation to 6% (Mutual Notice)</span>
+<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">Saves ₹2,250/mo</span>
+</div>
+<p class="text-[11px] text-on-surface-variant">Replace unilateral 15% automatic hike with fair indexation.</p>
+</div>
+</label>
+<!-- Item 3: Lock-in Reduction -->
+<label class="flex items-start gap-3 p-3 rounded-xl border border-surface-container hover:bg-surface-container-low transition-colors cursor-pointer">
+<input class="rounded border-outline-variant text-primary focus:ring-primary mt-0.5" id="negLockin" onchange="updateNegotiationDraft()" type="checkbox">
+<div class="space-y-0.5 flex-1">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface">Mutual 1-Month Notice, No Lock-in Forfeiture</span>
+<span class="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">Flexibility</span>
+</div>
+<p class="text-[11px] text-on-surface-variant">Waive ₹25,000 liquidated damages for job-relocation exits.</p>
+</div>
+</label>
+<!-- Item 4: Maintenance SLA -->
+<label class="flex items-start gap-3 p-3 rounded-xl border border-surface-container hover:bg-surface-container-low transition-colors cursor-pointer">
+<input class="rounded border-outline-variant text-primary focus:ring-primary mt-0.5" id="negSla" onchange="updateNegotiationDraft()" type="checkbox">
+<div class="space-y-0.5 flex-1">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface">Add Structural Repair SLA &amp; Annexure A</span>
+<span class="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded">Risk Mitigation</span>
+</div>
+<p class="text-[11px] text-on-surface-variant">Lessor remains liable for exterior seepage &amp; deep plumbing issues.</p>
+</div>
+</label>
+</div>
+<!-- Generated Counter Draft Preview -->
+<div class="space-y-2 pt-2">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-on-surface uppercase tracking-wide">Live Generated Counter Proposal</span>
+<div class="flex items-center gap-1">
+<button class="text-xs text-primary font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer" onclick="copyNegotiationText()">
+<span class="material-symbols-outlined text-[15px]">content_copy</span>
+<span>Copy Draft</span>
+</button>
+</div>
+</div>
+<div class="relative">
+<textarea class="w-full text-xs font-mono p-3 rounded-xl border border-surface-container bg-surface-container-low/70 text-on-surface focus:ring-2 focus:ring-primary focus:bg-white transition-all" id="negotiateDraftText" rows="7"></textarea>
+</div>
+<div class="flex items-center justify-between gap-3 pt-2">
+<button class="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-white font-semibold text-xs shadow hover:bg-primary/90 transition-all cursor-pointer" onclick="openWhatsAppModal()">
+<span class="material-symbols-outlined text-[17px]">send</span>
+<span>Open in WhatsApp Modal</span>
+</button>
+<button class="inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-surface-container text-on-surface font-semibold text-xs hover:bg-surface-container-high transition-colors cursor-pointer" onclick="copyNegotiationText()">
+<span class="material-symbols-outlined text-[16px]">share</span>
+<span>Copy Text</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- TAB 3: NOTES & AUDIO VIEW CONTENT -->
+<div class="p-6 space-y-6 flex-1 overflow-y-auto custom-scroll pb-24 hidden" id="tabViewNotes">
+<!-- Voice Note Player Card -->
+<div class="p-5 rounded-2xl bg-white border border-surface-container shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">mic</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-on-surface">Legal AI Voice Walkthrough (Kannada / English)</h3>
+<p class="text-xs text-on-surface-variant">Automated breakdown for quick tenant understanding</p>
+</div>
+</div>
+<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 font-bold border border-emerald-200">Ready</span>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-low border border-surface-container space-y-3">
+<div class="flex items-center justify-between text-xs font-mono text-on-surface-variant">
+<span id="audioTrackName">Kannada AI Voice Summary (Indiranagar 304)</span>
+<span id="audioPlayerDuration">0:18 / 1:14</span>
+</div>
+<!-- Progress bar -->
+<div class="w-full h-2 rounded-full bg-surface-container overflow-hidden cursor-pointer" onclick="seekAudio(event)">
+<div class="h-full bg-primary rounded-full transition-all duration-300" id="audioProgressBar" style="width: 25%;"></div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer" onclick="toggleAudio()">
+<span class="material-symbols-outlined text-[18px]" id="voicePlayIcon">play_arrow</span>
+</button>
+<button class="w-7 h-7 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high flex items-center justify-center cursor-pointer" onclick="rewindAudio()" title="Rewind 10s">
+<span class="material-symbols-outlined text-[16px]">replay_10</span>
+</button>
+</div>
+<div class="flex items-center gap-2 text-xs">
+<span class="text-on-surface-variant">Playback Speed:</span>
+<button class="px-2 py-0.5 rounded font-mono font-bold bg-surface-container text-primary" id="notesSpeedBtn" onclick="cycleSpeed()">1.0x</button>
+</div>
+</div>
+</div>
+<!-- Transcript snippet -->
+<div class="p-3 rounded-xl bg-secondary-fixed/30 border border-secondary-fixed text-xs space-y-1.5">
+<span class="font-bold text-on-secondary-fixed flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px]">subtitles</span>
+<span>Live Audio Transcript (English Translation)</span>
+</span>
+<p class="text-on-surface text-[12px] leading-relaxed italic">
+            "ನಮಸ್ಕಾರ ವರುಣ್ ಅವರೇ. ಈ ಅಗ್ರಿಮೆಂಟ್‌ನಲ್ಲಿ 10 ತಿಂಗಳ ಡೆಪಾಸಿಟ್ ಕೇಳಲಾಗಿದೆ (2,50,000 ರೂ). ಆದರೆ ಕರ್ನಾಟಕ ಮಾಡೆಲ್ ಟೆನೆನ್ಸಿ ಆಕ್ಟ್ ಪ್ರಕಾರ 2 ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು ಕೇಳುವಂತಿಲ್ಲ. ನೀವು ಇದನ್ನು ತಕ್ಷಣವೇ ಮಾಲೀಕರೊಂದಿಗೆ ಚರ್ಚಿಸಿ ಬದಲಾಯಿಸಿಕೊಳ್ಳಬೇಕು..."
+          </p>
+</div>
+</div>
+<!-- Private Tenant Notebook -->
+<div class="p-5 rounded-2xl bg-white border border-surface-container shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">lock</span>
+<h3 class="text-sm font-bold text-on-surface">Private Tenant Notebook</h3>
+</div>
+<span class="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">On-Device AES-256</span>
+</div>
+<p class="text-xs text-on-surface-variant">Notes typed here are never synced to any cloud server or LLM provider.</p>
+<!-- Existing Notes -->
+<div class="space-y-2" id="notesContainer">
+<div class="p-3 rounded-xl bg-surface-container-low border border-surface-container text-xs space-y-1">
+<div class="flex items-center justify-between text-on-surface-variant text-[10px]">
+<span>Created Oct 2, 2024 • 11:20 AM</span>
+<span class="text-primary font-semibold">Self-reminder</span>
+</div>
+<p class="text-on-surface font-medium">Verify if the water meter in Flat 304 is independent from Flat 303 before transferring advance.</p>
+</div>
+<div class="p-3 rounded-xl bg-surface-container-low border border-surface-container text-xs space-y-1">
+<div class="flex items-center justify-between text-on-surface-variant text-[10px]">
+<span>Created Oct 2, 2024 • 02:45 PM</span>
+<span class="text-primary font-semibold">Call with Broker</span>
+</div>
+<p class="text-on-surface font-medium">Broker Suresh mentioned landlord might accept 3 months deposit (₹75k) if rent is paid via ECS auto-debit on the 1st.</p>
+</div>
+</div>
+<!-- Add Note Input -->
+<div class="space-y-2 pt-2 border-t border-surface-container">
+<textarea class="w-full text-xs p-3 rounded-xl border border-surface-container bg-surface-container-low text-on-surface focus:ring-2 focus:ring-primary focus:bg-white" id="newNoteInput" placeholder="Add confidential negotiation note or question for landlord..." rows="2"></textarea>
+<div class="flex justify-end">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer" onclick="addTenantNote()">
+<span class="material-symbols-outlined text-[15px]">add</span>
+<span>Save Encrypted Note</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Audio Walkthrough Footer Bar -->
+<div class="p-3 bg-white/95 border-t border-surface-container backdrop-blur sticky bottom-0 z-30 flex items-center justify-between gap-3 shadow-sm">
+<div class="flex items-center gap-3 min-w-0">
+<button class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shrink-0 shadow hover:bg-primary/90 transition-transform active:scale-95 cursor-pointer" onclick="toggleAudio()" title="Play Kannada audio breakdown" type="button">
+<span class="material-symbols-outlined text-[18px]" id="footerPlayIcon">play_arrow</span>
+</button>
+<div class="flex flex-col min-w-0">
+<span class="text-xs font-bold text-on-surface truncate" id="footerAudioTitle">Audio Walkthrough in Kannada</span>
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary w-1/4" id="footerAudioProgress"></div>
+</div>
+<span class="text-[11px] text-on-surface-variant truncate" id="footerAudioTime">0:18 / 1:14 min • Deposit cap warning</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<button class="text-[11px] font-mono px-2 py-0.5 rounded bg-surface-container text-on-surface font-semibold hover:bg-surface-container-high cursor-pointer" id="footerSpeedBtn" onclick="cycleSpeed()">1.0x</button>
+</div>
+</div>
+</section>
+<!-- ================= RIGHT COLUMN (DOCUMENT PREVIEW CANVAS) ================= -->
+<section class="w-full lg:w-[52%] bg-surface-container-high/30 flex flex-col transition-all duration-300" id="rightPane">
+<!-- Sheet Controls Toolbar -->
+<div class="p-3.5 bg-white border-b border-surface-container sticky top-[97px] z-20 flex flex-wrap items-center justify-between gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+<!-- Switcher: Reconstructed Text vs Original Scan -->
+<div class="inline-flex items-center p-1 rounded-xl bg-surface-container-low border border-surface-container text-xs">
+<button class="px-3 py-1 rounded-lg bg-white text-primary font-bold shadow-sm flex items-center gap-1.5 transition-all" id="docModeReconstructed" onclick="setDocMode('reconstructed')" type="button">
+<span class="material-symbols-outlined text-[15px]">subject</span>
+<span>Reconstructed Text (Active)</span>
+</button>
+<button class="px-3 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5" id="docModeOriginal" onclick="setDocMode('original')" type="button">
+<span class="material-symbols-outlined text-[15px]">image</span>
+<span>Original Scan Photo</span>
+</button>
+</div>
+<!-- Zoom & Legend -->
+<div class="flex items-center gap-3">
+<!-- Zoom Controls -->
+<div class="flex items-center bg-surface-container-low px-2 py-1 rounded-lg text-xs font-mono text-on-surface">
+<button class="px-1 hover:text-primary font-bold cursor-pointer" onclick="zoomDoc(-10)" title="Zoom out" type="button">-</button>
+<span class="px-2 font-bold select-none" id="zoomPercentLabel">100%</span>
+<button class="px-1 hover:text-primary font-bold cursor-pointer" onclick="zoomDoc(10)" title="Zoom in" type="button">+</button>
+<span class="mx-1 text-outline-variant">|</span>
+<button class="hover:text-primary font-bold text-[11px] cursor-pointer" onclick="zoomDoc('fit')" type="button">Fit</button>
+</div>
+<!-- Page Counter -->
+<div class="flex items-center gap-1 text-xs font-mono text-on-surface-variant font-medium">
+<button class="hover:text-primary cursor-pointer" onclick="changePage(-1)"><span class="material-symbols-outlined text-[14px]">chevron_left</span></button>
+<span id="pageIndicator">Page 2 of 3</span>
+<button class="hover:text-primary cursor-pointer" onclick="changePage(1)"><span class="material-symbols-outlined text-[14px]">chevron_right</span></button>
+</div>
+</div>
+<!-- Severity Legend Strip -->
+<div class="w-full pt-1 flex items-center justify-between text-[11px] text-on-surface-variant border-t border-surface-container-low">
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center gap-1 font-medium cursor-pointer hover:text-error" onclick="focusClause('target-clause-4-2')">
+<span class="w-2 h-2 rounded-full bg-error"></span> Critical
+          </span>
+<span class="inline-flex items-center gap-1 font-medium cursor-pointer hover:text-amber-600" onclick="focusClause('target-clause-14-1')">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span> Caution
+          </span>
+<span class="inline-flex items-center gap-1 font-medium">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span> Safe
+          </span>
+</div>
+<span class="inline-flex items-center gap-1 text-sky-800 bg-sky-50 px-2 py-0.5 rounded font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span> OCR Confidence 99.8%
+        </span>
+</div>
+</div>
+<!-- Paper Document Canvas Area -->
+<div class="p-6 lg:p-8 flex justify-center overflow-y-auto custom-scroll flex-1 transition-transform origin-top" id="documentCanvasContainer">
+<!-- VIEW A: Reconstructed Sheet Canvas (Authentic A4 Paper Styling) -->
+<article class="w-full max-w-[760px] bg-white rounded-md shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-surface-container p-8 sm:p-12 flex flex-col gap-6 text-[#1E293B] relative font-serif transition-transform duration-200" id="reconstructedCanvas">
+<!-- Document Header / Stamp Watermark -->
+<div class="flex items-center justify-between text-[11px] font-mono text-on-surface-variant tracking-wider border-b border-surface-container pb-4 font-sans">
+<span>KARNATAKA REG. ACT NO. 15 // DOC ID: BLR-IND-2024-8049</span>
+<span class="text-primary font-semibold">STAMP VALUE: ₹500 PAID</span>
+</div>
+<!-- Document Title -->
+<div class="text-center space-y-1 my-2">
+<h2 class="text-xl sm:text-2xl font-bold tracking-tight text-on-surface font-serif">
+            RESIDENTIAL LEASE AGREEMENT
+          </h2>
+<p class="text-xs uppercase tracking-widest text-on-surface-variant font-sans font-medium">
+            (INDIRANAGAR / WARD 112, BENGALURU URBAN)
+          </p>
+</div>
+<!-- Recitals Excerpt -->
+<p class="text-[15px] leading-relaxed text-justify text-on-surface">
+          THIS AGREEMENT is entered into on this 1st day of October, 2024 between 
+          <span class="font-sans text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono font-semibold">[LESSOR_NAME_REDACTED]</span>, 
+          hereinafter referred to as the "Lessor", and 
+          <span class="font-sans text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono font-semibold">[LESSEE_NAME_REDACTED]</span>, 
+          hereinafter referred to as the "Lessee".
+        </p>
+<!-- Clause 4.1: Safe Baseline -->
+<div class="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200/80 transition-colors" id="target-clause-4-1">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+              Clause 4.1 • Safe Baseline
+            </span>
+<span class="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
+</div>
+<p class="text-[15px] leading-relaxed text-emerald-950">
+<strong>4.1 Monthly Rent:</strong> The Tenant shall pay to the Landlord a monthly rent of <strong>₹25,000/- (Rupees Twenty-Five Thousand Only)</strong> on or before the 5th day of each successive calendar month through direct NEFT/RTGS bank transfer. Utility tariffs including BESCOM power and BWSSB water shall be billed strictly against monthly sub-meter usage.
+          </p>
+</div>
+<!-- Clause 4.2: Critical Risk with Active Glow & OCR Callout -->
+<div class="p-4 rounded-xl bg-red-50/90 border-2 border-error transition-all duration-300 shadow-sm cursor-pointer" id="target-clause-4-2" onclick="switchWorkspaceTab('understand')">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-error uppercase tracking-wider flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+              Clause 4.2 • Critical Discrepancy
+            </span>
+<span class="text-[11px] bg-red-100 text-error px-2 py-0.5 rounded font-mono font-bold">
+              Exceeds KRTA Sec 10
+            </span>
+</div>
+<p class="text-[15px] leading-relaxed text-red-950">
+<strong>4.2 Security Deposit:</strong> The Tenant shall deposit with the Landlord an interest-free refundable caution deposit of 
+            <span class="bg-sky-100 text-sky-900 px-1.5 py-0.5 rounded underline decoration-sky-400 decoration-dashed cursor-pointer font-bold font-sans" title="OCR verification confidence: 99.8%">
+              ₹2,50,000/-
+            </span>
+<em>(Rupees Two Lakhs Fifty Thousand Only)</em> prior to the handover of keys. The Landlord reserves the absolute and unquestioned right to deduct repainting charges, deep cleaning debits, and any unspecified breakages prior to returning the balance within 45 days post physical handover.
+          </p>
+<div class="mt-2.5 pt-2 border-t border-red-200/60 font-sans text-xs flex flex-wrap items-center justify-between text-on-surface-variant gap-2">
+<span class="text-error font-medium">⚠️ 10-Month deposit is 500% over statutory 2-month threshold</span>
+<span class="text-sky-800 font-mono text-[11px] bg-sky-50 px-2 py-0.5 rounded">OCR Confidence: 99.8%</span>
+</div>
+</div>
+<!-- Clause 8.2: Lock-in Period & Early Termination -->
+<div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 transition-all duration-300 cursor-pointer" id="target-clause-8-2" onclick="switchWorkspaceTab('understand')">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-amber-900 uppercase tracking-wider">
+              Clause 8.2 • High Penalty Lock-In
+            </span>
+<span class="text-xs text-amber-800 font-sans font-semibold">Enforceability: Partial</span>
+</div>
+<p class="text-[15px] leading-relaxed text-amber-950">
+<strong>8.2 Lock-in Period &amp; Early Termination:</strong> Neither party shall be entitled to terminate this agreement during the initial <strong>6 (six) months</strong> ("Lock-in Window"). In the event that the Lessee desires to vacate the leased premises prior to the expiration of the said six-month lock-in, the Lessee shall forfeit one full month's rental sum (₹25,000/-) as liquidated damages and remain obligated to satisfy two (2) months mandatory advance notice fee.
+          </p>
+</div>
+<!-- Clause 14.1: Escalation Caution -->
+<div class="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 transition-all duration-300 cursor-pointer" id="target-clause-14-1" onclick="switchWorkspaceTab('understand')">
+<div class="flex items-center justify-between mb-1.5 font-sans">
+<span class="text-xs font-bold text-amber-900 uppercase tracking-wider">
+              Clause 14.1 • Caution Escalation
+            </span>
+<span class="text-[11px] text-amber-900 bg-amber-100 px-2 py-0.5 rounded font-mono font-bold">+15% Unilateral</span>
+</div>
+<p class="text-[15px] leading-relaxed text-amber-950">
+<strong>14.1 Escalation:</strong> Upon the successful completion of the initial eleven (11) month tenure, if mutually renewed, the Lessor reserves the sole right to automatically escalate the base monthly rent by <strong>15% (fifteen percent)</strong> without separate arbitration or comparative locality index assessment.
+          </p>
+</div>
+<!-- Missing Annexure Notice Banner -->
+<div class="p-4 rounded-xl bg-amber-100/80 border border-amber-300 text-amber-950 flex items-start gap-3 my-2 font-sans shadow-sm">
+<span class="material-symbols-outlined text-[24px] text-amber-800 shrink-0">report_problem</span>
+<div class="space-y-1">
+<span class="text-sm font-bold text-amber-900">Missing Annexure A Detected</span>
+<p class="text-xs text-amber-950 leading-relaxed">
+              Maintenance fee formula and sinking fund splits are explicitly referenced in Clause 6.2, but <strong>Annexure A is missing</strong> from your scanned 3-page upload. Ask the landlord for the complete schedule before signing.
+            </p>
+</div>
+</div>
+<!-- Signatures Section -->
+<div class="pt-10 mt-4 border-t border-surface-container font-sans text-xs text-on-surface-variant flex items-center justify-between">
+<div class="space-y-1">
+<p class="font-bold text-on-surface">LESSOR SIGNATURE</p>
+<div class="w-48 h-0.5 bg-outline-variant/40 mt-6"></div>
+<p class="text-[11px] text-on-surface-variant font-mono">[Signed via Aadhaar eSign]</p>
+</div>
+<div class="space-y-1 text-right">
+<p class="font-bold text-on-surface">LESSEE SIGNATURE</p>
+<div class="w-48 h-0.5 bg-outline-variant/40 mt-6"></div>
+<p class="text-[11px] text-on-surface-variant font-mono">[Awaiting Counter-Signature]</p>
+</div>
+</div>
+</article>
+<!-- VIEW B: Realistic Scanned Stamp Document Mockup (Hidden by default) -->
+<article class="hidden w-full max-w-[760px] bg-[#fbf9f2] rounded-md shadow-2xl border border-stone-300 p-8 sm:p-12 flex flex-col gap-6 text-stone-900 font-typewriter relative select-none transform rotate-[0.3deg]" id="originalScanCanvas">
+<!-- Realistic Physical Stamp Header -->
+<div class="border-4 border-double border-red-900/60 p-4 rounded-lg bg-amber-50/60 text-center space-y-1 relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 border-2 border-red-700/30 rounded-full flex items-center justify-center transform rotate-12 text-[10px] text-red-700 font-bold uppercase tracking-wider">
+            SUB-REGISTRAR<br>SHIVAJINAGAR
+          </div>
+<div class="text-[10px] tracking-widest font-bold text-red-950 uppercase font-sans">GOVERNMENT OF KARNATAKA • e-STAMP CERTIFICATE</div>
+<div class="text-xl font-bold tracking-widest text-red-900 font-serif">IN-KA09283019385938W</div>
+<div class="text-[11px] text-stone-700 flex justify-around pt-1 font-mono">
+<span>ISSUED: 01-OCT-2024</span>
+<span>STAMP DUTY: ₹500</span>
+<span>SEC 10 COMPLIANT</span>
+</div>
+</div>
+<div class="text-center font-bold text-lg text-stone-950 uppercase tracking-wider underline py-1">
+          TENANCY AGREEMENT (COPY OF ORIGINAL PHYSICAL SCAN)
+        </div>
+<p class="text-xs leading-relaxed text-justify opacity-90">
+          This Tenancy Agreement executed on the 1st Day of October 2024 between Mr. Ramesh K (Landlord / Lessor) and Mr. Varun Kumar (Tenant / Lessee) for premises at Flat 304, 3rd Floor, Indiranagar 100ft Road, Bengaluru 560038.
+        </p>
+<!-- Stamped Clause 4.1 with highlighter look -->
+<div class="p-3 bg-emerald-100/60 border-l-4 border-emerald-600 text-xs leading-relaxed rounded">
+<strong>CLAUSE 4.1:</strong> Monthly rental of <strong>Rs. 25,000/-</strong> (Rupees Twenty Five Thousand) payable strictly before 5th of each English calendar month. BESCOM / BWSSB to be paid directly by tenant.
+        </div>
+<!-- Stamped Clause 4.2 with RED handwritten circle & markup -->
+<div class="p-3 bg-yellow-200/70 border-2 border-red-600/90 rounded text-xs leading-relaxed relative">
+<span class="absolute -top-3 right-4 bg-red-600 text-white text-[9px] font-sans font-bold px-2 py-0.5 rounded shadow">FLAGGED: OVERPAYMENT</span>
+<strong>CLAUSE 4.2:</strong> Tenant agrees to deposit <mark class="bg-red-200/90 font-bold px-1 text-red-900">Rs. 2,50,000/- (Ten Months Rent)</mark> as interest-free security caution deposit. Repainting and repairs at sole landlord discretion. Refund within 45 days after vacancy inspection.
+        </div>
+<!-- Stamped Clause 8.2 -->
+<div class="p-3 bg-yellow-100/60 border border-amber-500 rounded text-xs leading-relaxed">
+<strong>CLAUSE 8.2:</strong> Mandatory 6 (six) months lock-in period. Vacating before completion shall invite forfeiture of 1 full month deposit and 2 months notice rent.
+        </div>
+<!-- Stamped Clause 14.1 -->
+<div class="p-3 bg-yellow-200/70 border-l-4 border-amber-600 rounded text-xs leading-relaxed">
+<strong>CLAUSE 14.1:</strong> Automatic rent escalation of <strong>15%</strong> after 11 months without separate agreement.
+        </div>
+<!-- Physical Ink Stamps and Signatures -->
+<div class="pt-8 mt-6 border-t border-stone-300 flex items-center justify-between text-xs">
+<div class="text-center">
+<div class="italic font-serif text-blue-900 text-sm py-1 font-bold">Ramesh Kumar</div>
+<div class="w-36 h-px bg-stone-500 mx-auto"></div>
+<span class="text-[10px] text-stone-500">LESSOR SIGNATURE</span>
+</div>
+<div class="w-20 h-20 rounded-full border-2 border-dashed border-red-800/40 flex items-center justify-center text-[9px] text-red-800 font-bold text-center leading-tight transform -rotate-12">
+            OFFICIAL<br>NOTARY SEAL<br>BENGALURU
+          </div>
+<div class="text-center">
+<div class="italic font-serif text-stone-400 text-sm py-1">[Pending signature]</div>
+<div class="w-36 h-px bg-stone-500 mx-auto"></div>
+<span class="text-[10px] text-stone-500">LESSEE SIGNATURE</span>
+</div>
+</div>
+</article>
+</div>
+</section>
+</main>
+<!-- ================= MODAL 1: WHATSAPP COMPOSER MODAL ================= -->
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-opacity duration-200" id="modalWhatsApp">
+<div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
+<!-- Header -->
+<div class="p-4 bg-[#075E54] text-white flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+</div>
+<div>
+<h3 class="text-sm font-bold">Draft WhatsApp Counter-Offer</h3>
+<p class="text-[11px] text-emerald-100">Ready to send directly to Landlord</p>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white cursor-pointer" onclick="closeWhatsAppModal()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Body -->
+<div class="p-5 space-y-4 overflow-y-auto">
+<!-- Contact Selector -->
+<div class="space-y-1">
+<label class="text-xs font-bold text-on-surface">Recipient</label>
+<div class="flex items-center gap-2 p-2.5 rounded-xl border border-surface-container bg-surface-container-low text-xs">
+<div class="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">RK</div>
+<div class="flex-1">
+<span class="font-bold text-on-surface">Mr. Ramesh Kumar</span>
+<span class="text-[11px] text-on-surface-variant block">+91 98450 XXXXX (Landlord - Flat 304)</span>
+</div>
+</div>
+</div>
+<!-- Language & Tone Tabs -->
+<div class="flex items-center justify-between">
+<label class="text-xs font-bold text-on-surface">Message Content</label>
+<div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg text-xs">
+<button class="px-2 py-0.5 rounded bg-white font-bold text-primary shadow-xs" id="waLangEn" onclick="setWhatsAppLang('en')">English</button>
+<button class="px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface font-semibold" id="waLangKn" onclick="setWhatsAppLang('kn')">ಕನ್ನಡ (Kannada)</button>
+</div>
+</div>
+<!-- WhatsApp Editable Bubble -->
+<div class="p-3.5 rounded-2xl bg-[#DCF8C6]/40 border border-[#b8e49c] space-y-2">
+<textarea class="w-full text-xs font-sans p-2 rounded-xl bg-transparent border-0 focus:ring-0 text-stone-900 resize-none leading-relaxed" id="waMessageText" rows="8"></textarea>
+<div class="flex items-center justify-between text-[10px] text-stone-500 pt-1 border-t border-[#b8e49c]/40 font-mono">
+<span>Character count: <span id="waCharCount">340</span></span>
+<span class="text-emerald-800 font-semibold">✓ Verified with KMTA 2021 statutory limits</span>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-4 bg-surface-container-low border-t border-surface-container flex items-center justify-between gap-3">
+<button class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-surface-container-highest text-on-surface hover:bg-surface-container font-semibold text-xs transition-colors cursor-pointer" onclick="copyWhatsAppMessage()">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span>Copy Message</span>
+</button>
+<button class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] font-bold text-xs shadow-md transition-all cursor-pointer" onclick="sendViaWhatsAppWeb()">
+<span class="material-symbols-outlined text-[18px]">send</span>
+<span>Send via WhatsApp Web</span>
+</button>
+</div>
+</div>
+</div>
+<!-- ================= MODAL 2: 1-PAGE SUMMARY BRIEF MODAL ================= -->
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-opacity duration-200" id="modalBrief">
+<div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95">
+<!-- Header -->
+<div class="p-4 bg-surface-container-low border-b border-surface-container flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">summarize</span>
+</div>
+<div>
+<h3 class="text-sm font-bold text-on-surface">Executive 1-Page Summary Brief</h3>
+<p class="text-[11px] text-on-surface-variant">Print-ready tenant protection dossier</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 cursor-pointer" onclick="simulatePrint()">
+<span class="material-symbols-outlined text-[15px]">print</span>
+<span>Print / Save PDF</span>
+</button>
+<button class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant cursor-pointer" onclick="closeBriefModal()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- Printable Content Sheet Preview -->
+<div class="p-6 space-y-6 overflow-y-auto bg-stone-50/50">
+<div class="p-6 bg-white rounded-xl border border-surface-container shadow-sm space-y-5">
+<!-- Brief Title Block -->
+<div class="flex items-start justify-between border-b border-surface-container pb-4">
+<div>
+<span class="text-[10px] font-bold text-primary uppercase tracking-widest">LAWLENS PRO AUDIT REPORT</span>
+<h2 class="text-lg font-bold text-on-surface">Bengaluru Rental Agreement Review</h2>
+<p class="text-xs text-on-surface-variant">Premises: Flat 304, Indiranagar • Monthly Rent: ₹25,000</p>
+</div>
+<!-- Gauge Mini Score -->
+<div class="text-right">
+<div class="text-2xl font-black text-amber-600">62 / 100</div>
+<span class="text-[11px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Caution Level</span>
+</div>
+</div>
+<!-- 3-Pillar Executive Summary -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+<div class="p-3 rounded-xl bg-red-50 border border-red-200">
+<span class="text-[10px] font-bold text-error uppercase">Total Financial Exposure</span>
+<p class="text-lg font-black text-error">₹1,35,000</p>
+<p class="text-[11px] text-red-900 mt-1">Excess deposit + early lock-in penalty risk.</p>
+</div>
+<div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+<span class="text-[10px] font-bold text-emerald-800 uppercase">Negotiable Savings</span>
+<p class="text-lg font-black text-emerald-700">₹2,00,000</p>
+<p class="text-[11px] text-emerald-950 mt-1">By locking 2-month deposit limit.</p>
+</div>
+<div class="p-3 rounded-xl bg-surface-container-low border border-surface-container">
+<span class="text-[10px] font-bold text-on-surface uppercase">Statutory Basis</span>
+<p class="text-sm font-bold text-primary mt-1">KMTA Sec 10</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Legally binding residential ceiling.</p>
+</div>
+</div>
+<!-- Bullet Highlights for Quick Read -->
+<div class="space-y-2 text-xs">
+<h4 class="font-bold text-on-surface uppercase tracking-wide text-[11px]">Key Findings &amp; Red Lines</h4>
+<ul class="space-y-1.5 text-on-surface-variant list-disc pl-4">
+<li><strong class="text-on-surface">Clause 4.2 (10-Mo Deposit):</strong> Violates Karnataka Model Tenancy Act which limits deposit to 2 months rent maximum for residential leases.</li>
+<li><strong class="text-on-surface">Clause 14.1 (15% Escalation):</strong> Out of line with market indexation (5%–8%). Recommended to replace with mutual review clause.</li>
+<li><strong class="text-on-surface">Clause 8.2 (Exit Penalty):</strong> Month 3 exit causes ₹75,000 forfeiture. Suggest reducing notice penalty to 30 days without liquidated damages.</li>
+<li><strong class="text-on-surface">Missing Annexure A:</strong> Landlord maintenance liability schedule was not attached to the scanned file.</li>
+</ul>
+</div>
+<!-- QR Verification Footer -->
+<div class="pt-4 border-t border-surface-container flex items-center justify-between text-[11px] text-on-surface-variant">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 bg-surface-container flex items-center justify-center rounded border border-outline-variant font-mono text-[9px] text-center font-bold">
+              [QR VERIFY]
+            </div>
+<div>
+<p class="font-bold text-on-surface">Verification Hash: SHA256-KA8049-F304</p>
+<p>Generated securely on-device with zero server cloud retention.</p>
+</div>
+</div>
+<span class="font-mono text-primary font-bold">Page 1 of 1</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ================= MODAL 3: ZERO-CLOUD PRIVACY & PII AUDIT DRAWER ================= -->
+<div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 transition-opacity duration-200" id="modalSecurity">
+<div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-surface-container overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
+<div class="p-4 bg-emerald-900 text-white flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">shield</span>
+</div>
+<div>
+<h3 class="text-sm font-bold">Zero-Cloud Privacy &amp; PII Shield Audit</h3>
+<p class="text-[11px] text-emerald-200">On-Device Sandboxing Proof</p>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full hover:bg-emerald-800 flex items-center justify-center text-white cursor-pointer" onclick="closeSecurityModal()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<div class="p-5 space-y-4 text-xs text-on-surface-variant overflow-y-auto">
+<div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1">
+<div class="flex items-center gap-1.5 font-bold">
+<span class="material-symbols-outlined text-[17px] text-emerald-700">lock_outline</span>
+<span>100% Client-Side WebWorker Processing</span>
+</div>
+<p class="leading-relaxed">Your rental agreement PDF was processed entirely inside your local browser memory via WebAssembly OCR. No contract text or PII was transmitted to any LawLens or 3rd party server.</p>
+</div>
+<div class="space-y-2">
+<span class="font-bold text-on-surface uppercase tracking-wide text-[11px]">5 On-Device Masked Tokens</span>
+<div class="space-y-2">
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low border border-surface-container">
+<div>
+<span class="font-bold text-on-surface block">Lessor Full Name</span>
+<span class="font-mono text-[10px] text-outline">[LESSOR_NAME_REDACTED]</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">MASKED</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low border border-surface-container">
+<div>
+<span class="font-bold text-on-surface block">Tenant Aadhaar ID</span>
+<span class="font-mono text-[10px] text-outline">XXXX-XXXX-8912</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">HASHED</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low border border-surface-container">
+<div>
+<span class="font-bold text-on-surface block">Lessor Bank Account / IFSC</span>
+<span class="font-mono text-[10px] text-outline">SBIN000**** / 9182390****</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">REDACTED</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low border border-surface-container">
+<div>
+<span class="font-bold text-on-surface block">Tenant Primary Mobile</span>
+<span class="font-mono text-[10px] text-outline">+91 99000 *****</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">MASKED</span>
+</div>
+<div class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low border border-surface-container">
+<div>
+<span class="font-bold text-on-surface block">Sub-Registrar Stamp Serial</span>
+<span class="font-mono text-[10px] text-outline">IN-KA09283019385938W</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">VERIFIED LOCAL</span>
+</div>
+</div>
+</div>
+<div class="p-3 rounded-xl bg-surface-container-low text-[11px] space-y-1">
+<span class="font-bold text-on-surface">Data Retention:</span>
+<p>Zero telemetry. Closing this browser tab clears all session tokens, private notes, and temporary canvas buffers instantly.</p>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low border-t border-surface-container flex justify-end">
+<button class="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer" onclick="closeSecurityModal()">
+        Acknowledge &amp; Return
+      </button>
+</div>
+</div>
+</div>
+<!-- ================= JAVASCRIPT LOGIC ================= -->
+<script>
+  // --- State Variables ---
+  let activeTab = 'understand';
+  let activeDocMode = 'reconstructed';
+  let currentZoom = 100;
+  let currentPage = 2;
+  let isPlayingAudio = false;
+  let audioTimer = null;
+  let currentAudioSeconds = 18;
+  const totalAudioSeconds = 74; // 1:14
+  let currentSpeed = 1.0;
+  let activeNegotiationTone = 'polite';
+  let activeWaLang = 'en';
+
+  // --- Toast System ---
+  function showToast(msg) {
+    const toast = document.getElementById('toastNotification');
+    const toastMsg = document.getElementById('toastMessage');
+    toastMsg.textContent = msg;
+    toast.classList.remove('translate-y-24', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    setTimeout(() => {
+      toast.classList.add('translate-y-24', 'opacity-0');
+      toast.classList.remove('translate-y-0', 'opacity-100');
+    }, 2400);
+  }
+
+  // --- Workspace Left Pane Tab Switching ---
+  function switchWorkspaceTab(tab) {
+    activeTab = tab;
+    const tabBtnUnderstand = document.getElementById('tabBtnUnderstand');
+    const tabBtnNegotiate = document.getElementById('tabBtnNegotiate');
+    const tabBtnNotes = document.getElementById('tabBtnNotes');
+    
+    const tabViewUnderstand = document.getElementById('tabViewUnderstand');
+    const tabViewNegotiate = document.getElementById('tabViewNegotiate');
+    const tabViewNotes = document.getElementById('tabViewNotes');
+
+    // Reset buttons
+    [tabBtnUnderstand, tabBtnNegotiate, tabBtnNotes].forEach(b => {
+      b.className = "flex-1 py-2 px-3 rounded-lg text-on-surface-variant hover:text-on-surface font-semibold flex items-center justify-center gap-1.5 transition-colors";
+    });
+
+    // Hide all views
+    tabViewUnderstand.classList.add('hidden');
+    tabViewNegotiate.classList.add('hidden');
+    tabViewNotes.classList.add('hidden');
+
+    if (tab === 'understand') {
+      tabBtnUnderstand.className = "flex-1 py-2 px-3 rounded-lg bg-surface-container-lowest text-primary font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all";
+      tabViewUnderstand.classList.remove('hidden');
+    } else if (tab === 'negotiate') {
+      tabBtnNegotiate.className = "flex-1 py-2 px-3 rounded-lg bg-surface-container-lowest text-primary font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all";
+      tabViewNegotiate.classList.remove('hidden');
+      updateNegotiationDraft();
+    } else if (tab === 'notes') {
+      tabBtnNotes.className = "flex-1 py-2 px-3 rounded-lg bg-surface-container-lowest text-primary font-bold shadow-sm flex items-center justify-center gap-1.5 transition-all";
+      tabViewNotes.classList.remove('hidden');
+    }
+  }
+
+  // --- Document View Mode Switcher (Reconstructed vs Original Scan) ---
+  function setDocMode(mode) {
+    activeDocMode = mode;
+    const reconstructedCanvas = document.getElementById('reconstructedCanvas');
+    const originalScanCanvas = document.getElementById('originalScanCanvas');
+    const btnRecon = document.getElementById('docModeReconstructed');
+    const btnOrig = document.getElementById('docModeOriginal');
+
+    if (mode === 'reconstructed') {
+      reconstructedCanvas.classList.remove('hidden');
+      originalScanCanvas.classList.add('hidden');
+
+      btnRecon.className = "px-3 py-1 rounded-lg bg-white text-primary font-bold shadow-sm flex items-center gap-1.5 transition-all";
+      btnOrig.className = "px-3 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5";
+    } else {
+      reconstructedCanvas.classList.add('hidden');
+      originalScanCanvas.classList.remove('hidden');
+
+      btnOrig.className = "px-3 py-1 rounded-lg bg-white text-primary font-bold shadow-sm flex items-center gap-1.5 transition-all";
+      btnRecon.className = "px-3 py-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5";
+    }
+  }
+
+  // --- Segmented Layout Switcher (Report / Split / Document) ---
+  function setLayoutView(view) {
+    const leftPane = document.getElementById('leftPane');
+    const rightPane = document.getElementById('rightPane');
+    const btnReport = document.getElementById('viewBtnReport');
+    const btnSplit = document.getElementById('viewBtnSplit');
+    const btnDoc = document.getElementById('viewBtnDoc');
+
+    [btnReport, btnSplit, btnDoc].forEach(b => {
+      b.className = "px-3.5 py-1.5 rounded-lg text-xs font-medium text-on-surface-variant hover:text-on-surface transition-colors";
+    });
+
+    if (view === 'report') {
+      btnReport.className = "px-3.5 py-1.5 rounded-lg bg-white text-primary font-bold text-xs shadow-sm flex items-center gap-1.5";
+      leftPane.classList.remove('hidden');
+      leftPane.style.width = "100%";
+      rightPane.classList.add('hidden');
+    } else if (view === 'doc') {
+      btnDoc.className = "px-3.5 py-1.5 rounded-lg bg-white text-primary font-bold text-xs shadow-sm flex items-center gap-1.5";
+      leftPane.classList.add('hidden');
+      rightPane.classList.remove('hidden');
+      rightPane.style.width = "100%";
+    } else {
+      btnSplit.className = "px-3.5 py-1.5 rounded-lg bg-white text-primary font-bold text-xs shadow-sm flex items-center gap-1.5";
+      leftPane.classList.remove('hidden');
+      rightPane.classList.remove('hidden');
+      leftPane.style.width = "";
+      rightPane.style.width = "";
+    }
+  }
+
+  // --- Zoom Controls ---
+  function zoomDoc(delta) {
+    const recon = document.getElementById('reconstructedCanvas');
+    const orig = document.getElementById('originalScanCanvas');
+    const label = document.getElementById('zoomPercentLabel');
+
+    if (delta === 'fit') {
+      currentZoom = 100;
+    } else {
+      currentZoom = Math.max(70, Math.min(150, currentZoom + delta));
+    }
+    label.textContent = `${currentZoom}%`;
+    const scaleVal = currentZoom / 100;
+    recon.style.transform = `scale(${scaleVal})`;
+    orig.style.transform = `scale(${scaleVal}) rotate(0.3deg)`;
+  }
+
+  function changePage(delta) {
+    currentPage = Math.max(1, Math.min(3, currentPage + delta));
+    document.getElementById('pageIndicator').textContent = `Page ${currentPage} of 3`;
+    showToast(`Navigated to Page ${currentPage} of 3`);
+  }
+
+  // --- Interactive Highlight & Scroll into Sheet ---
+  function focusClause(elementId) {
+    // If we're on original scan view, flip to reconstructed to highlight
+    if (activeDocMode === 'original') {
+      setDocMode('reconstructed');
+    }
+    const target = document.getElementById(elementId);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('highlight-active');
+      setTimeout(() => {
+        target.classList.remove('highlight-active');
+      }, 2500);
+      showToast('Centered on: ' + elementId.replace('target-', '').toUpperCase());
+    }
+  }
+
+  // --- Exit Penalty Simulation Interactive Bar ---
+  function setExitMonth(month) {
+    const pin = document.getElementById('timelinePin');
+    const heading = document.getElementById('exitDetailHeading');
+    const text = document.getElementById('exitDetailText');
+    const labelM3 = document.getElementById('exitLabelM3');
+    const labelM6 = document.getElementById('exitLabelM6');
+
+    if (month === 1) {
+      pin.style.left = "4%";
+      heading.innerHTML = '<span class="material-symbols-outlined text-[16px]">info</span><span>Early Exit at Month 1: Total Lock-in Forfeiture</span>';
+      text.textContent = 'Clause 8.2 triggers full 1-month penalty (₹25,000) + 2 months notice rent obligation (₹50,000). Total financial hit: ₹75,000.';
+    } else if (month === 3) {
+      pin.style.left = "27%";
+      heading.innerHTML = '<span class="material-symbols-outlined text-[16px]">warning</span><span>Early Exit at Month 3: Immediate ₹75,000 Cash Loss</span>';
+      text.textContent = 'Breakdown: ₹25,000 1-month penalty deduction + ₹50,000 (2 months mandatory notice rent) payable upfront. After Month 6, early exit fee drops to standard 30-day notice.';
+    } else if (month === 6) {
+      pin.style.left = "50%";
+      heading.innerHTML = '<span class="material-symbols-outlined text-[16px] text-emerald-700">check_circle</span><span class="text-emerald-800">Exit at Month 6: End of Mandatory Lock-in Window</span>';
+      text.textContent = 'Lock-in expires. Penalty drops from ₹75,000 to standard 1-month notice period (₹25,000). Full caution deposit refundable subject to standard deductions.';
+    } else if (month === 11) {
+      pin.style.left = "94%";
+      heading.innerHTML = '<span class="material-symbols-outlined text-[16px] text-emerald-700">verified</span><span class="text-emerald-800">Month 11: Natural Lease Expiry</span>';
+      text.textContent = 'Agreement completes tenure. Full deposit refund due within 10 days under Model Tenancy Act rules (unless 15% escalation is signed).';
+    }
+  }
+
+  function clickTimeline(e) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    if (ratio < 0.2) setExitMonth(1);
+    else if (ratio < 0.45) setExitMonth(3);
+    else if (ratio < 0.75) setExitMonth(6);
+    else setExitMonth(11);
+  }
+
+  // --- Negotiation Composer Logic ---
+  function setNegotiationTone(tone) {
+    activeNegotiationTone = tone;
+    const btnPolite = document.getElementById('toneBtnPolite');
+    const btnStrict = document.getElementById('toneBtnStrict');
+    if (tone === 'polite') {
+      btnPolite.className = "p-2.5 rounded-xl border-2 border-primary bg-primary/5 text-primary text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition-all";
+      btnStrict.className = "p-2.5 rounded-xl border border-surface-container text-on-surface-variant text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition-all hover:bg-surface-container";
+    } else {
+      btnStrict.className = "p-2.5 rounded-xl border-2 border-primary bg-primary/5 text-primary text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition-all";
+      btnPolite.className = "p-2.5 rounded-xl border border-surface-container text-on-surface-variant text-xs font-semibold flex items-center justify-center gap-1.5 text-center transition-all hover:bg-surface-container";
+    }
+    updateNegotiationDraft();
+  }
+
+  function updateNegotiationDraft() {
+    const dep = document.getElementById('negDeposit').checked;
+    const esc = document.getElementById('negEscalation').checked;
+    const lck = document.getElementById('negLockin').checked;
+    const sla = document.getElementById('negSla').checked;
+
+    let count = 0;
+    if (dep) count++;
+    if (esc) count++;
+    if (lck) count++;
+    if (sla) count++;
+    document.getElementById('disputeBadge').textContent = count;
+
+    let text = "";
+    if (activeNegotiationTone === 'polite') {
+      text += "Hi Mr. Ramesh, thank you for sending over the draft agreement for Flat 304 Indiranagar.\n\nI am eager to finalize the lease. After reviewing with legal guidelines, I wanted to propose a few standard adjustments so we can proceed:\n";
+      if (dep) text += "• Security Deposit: Proposing 2 months (₹50,000) in alignment with Karnataka Model Tenancy Act guidelines (Sec 10).\n";
+      if (esc) text += "• Annual Escalation: Requesting a standard 5-6% hike upon mutual consent rather than an automatic 15%.\n";
+      if (lck) text += "• Termination: Standard 30 days notice for tenant exit after month 3 without penalty forfeiture.\n";
+      if (sla) text += "• Maintenance Annexure: Incorporating standard lessor duty for core seepage & structural repairs.\n";
+      text += "\nPlease let me know if these minor revisions work so we can execute the agreement.";
+    } else {
+      text += "FORMAL NOTICE / REVISED AMENDMENT PROPOSAL\nTo: Mr. Ramesh Kumar (Lessor, Flat 304 Indiranagar)\n\nUpon statutory compliance review of the drafted lease, the following mandatory amendments are submitted:\n";
+      if (dep) text += "1. RE: CLAUSE 4.2: Statutory cap under Section 10 KMTA 2021 restricts residential deposit to 2 months rent (₹50,000). Current 10-month demand (₹2.5L) must be revised.\n";
+      if (esc) text += "2. RE: CLAUSE 14.1: Unilateral 15% escalation is non-standard. Cap at local indexation (5%) with 90-day mutual notice.\n";
+      if (lck) text += "3. RE: CLAUSE 8.2: 6-month lock-in penalty clause to be amended to mutual 1-month notice.\n";
+      if (sla) text += "4. MISSING SCHEDULE: Require Annexure A specifying lessor maintenance SLA prior to signature.\n";
+      text += "\nAwaiting revised agreement copy for e-signature.";
+    }
+
+    document.getElementById('negotiateDraftText').value = text;
+    // Also keep WhatsApp modal synchronized
+    if (activeWaLang === 'en') {
+      document.getElementById('waMessageText').value = text;
+      document.getElementById('waCharCount').textContent = text.length;
+    }
+  }
+
+  function copyNegotiationText() {
+    const val = document.getElementById('negotiateDraftText').value;
+    navigator.clipboard.writeText(val);
+    showToast('Negotiation draft copied to clipboard!');
+  }
+
+  // --- Audio Player Logic ---
+  function toggleAudio() {
+    isPlayingAudio = !isPlayingAudio;
+    const footerIcon = document.getElementById('footerPlayIcon');
+    const voiceIcon = document.getElementById('voicePlayIcon');
+    
+    if (isPlayingAudio) {
+      footerIcon.textContent = 'pause';
+      voiceIcon.textContent = 'pause';
+      showToast('Audio walkthrough playing (Kannada / English)...');
+      audioTimer = setInterval(() => {
+        currentAudioSeconds += 1;
+        if (currentAudioSeconds >= totalAudioSeconds) {
+          currentAudioSeconds = 0;
+        }
+        updateAudioUI();
+      }, 1000 / currentSpeed);
+    } else {
+      footerIcon.textContent = 'play_arrow';
+      voiceIcon.textContent = 'play_arrow';
+      clearInterval(audioTimer);
+    }
+  }
+
+  function updateAudioUI() {
+    const mins = Math.floor(currentAudioSeconds / 60);
+    const secs = (currentAudioSeconds % 60).toString().padStart(2, '0');
+    const pct = (currentAudioSeconds / totalAudioSeconds) * 100;
+
+    document.getElementById('audioProgressBar').style.width = `${pct}%`;
+    document.getElementById('footerAudioProgress').style.width = `${pct}%`;
+    document.getElementById('audioPlayerDuration').textContent = `${mins}:${secs} / 1:14`;
+    document.getElementById('footerAudioTime').textContent = `${mins}:${secs} / 1:14 min • Deposit cap warning`;
+  }
+
+  function rewindAudio() {
+    currentAudioSeconds = Math.max(0, currentAudioSeconds - 10);
+    updateAudioUI();
+    showToast('Rewound 10 seconds');
+  }
+
+  function cycleSpeed() {
+    if (currentSpeed === 1.0) currentSpeed = 1.25;
+    else if (currentSpeed === 1.25) currentSpeed = 1.5;
+    else currentSpeed = 1.0;
+
+    document.getElementById('notesSpeedBtn').textContent = `${currentSpeed}x`;
+    document.getElementById('footerSpeedBtn').textContent = `${currentSpeed}x`;
+    showToast(`Playback speed set to ${currentSpeed}x`);
+
+    if (isPlayingAudio) {
+      clearInterval(audioTimer);
+      audioTimer = setInterval(() => {
+        currentAudioSeconds += 1;
+        if (currentAudioSeconds >= totalAudioSeconds) currentAudioSeconds = 0;
+        updateAudioUI();
+      }, 1000 / currentSpeed);
+    }
+  }
+
+  function playAudioSpecific(title) {
+    switchWorkspaceTab('notes');
+    if (!isPlayingAudio) toggleAudio();
+    showToast(`Playing audio analysis: ${title}`);
+  }
+
+  function seekAudio(e) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    currentAudioSeconds = Math.floor(ratio * totalAudioSeconds);
+    updateAudioUI();
+  }
+
+  // --- Notes Private Keychain ---
+  function addTenantNote() {
+    const input = document.getElementById('newNoteInput');
+    const val = input.value.trim();
+    if (!val) return;
+
+    const container = document.getElementById('notesContainer');
+    const newCard = document.createElement('div');
+    newCard.className = "p-3 rounded-xl bg-surface-container-low border border-surface-container text-xs space-y-1 animate-in fade-in";
+    newCard.innerHTML = `
+      <div class="flex items-center justify-between text-on-surface-variant text-[10px]">
+        <span>Created Just Now • Local Vault</span>
+        <span class="text-emerald-700 font-semibold">AES-256 Encrypted</span>
+      </div>
+      <p class="text-on-surface font-medium">${val}</p>
+    `;
+    container.prepend(newCard);
+    input.value = '';
+    showToast('Encrypted note saved locally in browser vault!');
+  }
+
+  // --- Modal Logic (WhatsApp, Brief, Security) ---
+  function openWhatsAppModal() {
+    updateNegotiationDraft();
+    document.getElementById('modalWhatsApp').classList.remove('hidden');
+    document.getElementById('modalWhatsApp').classList.add('flex');
+  }
+
+  function closeWhatsAppModal() {
+    document.getElementById('modalWhatsApp').classList.add('hidden');
+    document.getElementById('modalWhatsApp').classList.remove('flex');
+  }
+
+  function setWhatsAppLang(lang) {
+    activeWaLang = lang;
+    const btnEn = document.getElementById('waLangEn');
+    const btnKn = document.getElementById('waLangKn');
+    const txt = document.getElementById('waMessageText');
+
+    if (lang === 'en') {
+      btnEn.className = "px-2 py-0.5 rounded bg-white font-bold text-primary shadow-xs";
+      btnKn.className = "px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface font-semibold";
+      updateNegotiationDraft();
+    } else {
+      btnKn.className = "px-2 py-0.5 rounded bg-white font-bold text-primary shadow-xs";
+      btnEn.className = "px-2 py-0.5 rounded text-on-surface-variant hover:text-on-surface font-semibold";
+      const kannadaText = "ನಮಸ್ಕಾರ ರಮೇಶ್ ಅವರೇ, ಫ್ಲ್ಯಾಟ್ 304 ಇಂದಿರಾನಗರದ ಅಗ್ರಿಮೆಂಟ್ ಡ್ರಾಫ್ಟ್ ಪರಿಶೀಲಿಸಿದ್ದೇನೆ.\n\nಕರ್ನಾಟಕ ಬಾಡಿಗೆ ನಿಯಮಾವಳಿ (KMTA 2021) ಪ್ರಕಾರ 2 ತಿಂಗಳ ಅಡ್ವಾನ್ಸ್ ಡೆಪಾಸಿಟ್ (₹50,000) ನೀಡಲು ನಾನು ಒಪ್ಪುತ್ತೇನೆ. ದಯವಿಟ್ಟು 10 ತಿಂಗಳ ಡೆಪಾಸಿಟ್ ಬದಲಿಗೆ 2 ತಿಂಗಳ ಷರತ್ತನ್ನು ಅಳವಡಿಸಿ ಹೊಸ ಪ್ರತಿ ಕಳುಹಿಸಿಕೊಡಿ.\n\nಧನ್ಯವಾದಗಳು - ವರುಣ್ ಕುಮಾರ್";
+      txt.value = kannadaText;
+      document.getElementById('waCharCount').textContent = kannadaText.length;
+    }
+  }
+
+  function copyWhatsAppMessage() {
+    const val = document.getElementById('waMessageText').value;
+    navigator.clipboard.writeText(val);
+    showToast('WhatsApp message copied to clipboard!');
+  }
+
+  function sendViaWhatsAppWeb() {
+    const val = encodeURIComponent(document.getElementById('waMessageText').value);
+    showToast('Opening WhatsApp Web in new tab...');
+    window.open(`https://api.whatsapp.com/send?text=${val}`, '_blank');
+  }
+
+  function openBriefModal() {
+    document.getElementById('modalBrief').classList.remove('hidden');
+    document.getElementById('modalBrief').classList.add('flex');
+  }
+
+  function closeBriefModal() {
+    document.getElementById('modalBrief').classList.add('hidden');
+    document.getElementById('modalBrief').classList.remove('flex');
+  }
+
+  function simulatePrint() {
+    showToast('Preparing PDF brief download...');
+    setTimeout(() => {
+      window.print();
+    }, 400);
+  }
+
+  function openSecurityModal() {
+    document.getElementById('modalSecurity').classList.remove('hidden');
+    document.getElementById('modalSecurity').classList.add('flex');
+  }
+
+  function closeSecurityModal() {
+    document.getElementById('modalSecurity').classList.add('hidden');
+    document.getElementById('modalSecurity').classList.remove('flex');
+  }
+
+  // --- Keyboard & Escape Listener ---
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeWhatsAppModal();
+      closeBriefModal();
+      closeSecurityModal();
+    }
+  });
+
+  // Initialize live negotiation draft
+  updateNegotiationDraft();
+</script>
+</body></html>

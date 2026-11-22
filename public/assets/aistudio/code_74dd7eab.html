@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400..700;1,8..60,400..700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"secondary":"#4d5b94","outline-variant":"#c4c5d7","primary-fixed-dim":"#b7c4ff","on-secondary-container":"#3d4c83","on-error":"#ffffff","on-primary-fixed":"#001551","surface-variant":"#dae2fd","on-tertiary-container":"#ffc9b7","error":"#ba1a1a","surface-container-high":"#e2e7ff","surface-bright":"#faf8ff","on-surface-variant":"#434655","surface-container-highest":"#dae2fd","surface-tint":"#2151da","secondary-fixed-dim":"#b7c4ff","outline":"#747686","tertiary-fixed":"#ffdbcf","background":"#faf8ff","on-error-container":"#93000a","inverse-on-surface":"#eef0ff","on-surface":"#131b2e","secondary-container":"#b0befe","tertiary":"#7f2500","on-secondary":"#ffffff","inverse-primary":"#b7c4ff","on-primary-fixed-variant":"#0039b5","tertiary-fixed-dim":"#ffb59c","surface-dim":"#d2d9f4","tertiary-container":"#a73400","surface":"#faf8ff","on-primary-container":"#cad3ff","inverse-surface":"#283044","on-secondary-fixed":"#03164d","on-tertiary":"#ffffff","on-background":"#131b2e","primary-container":"#1d4ed8","surface-container-lowest":"#ffffff","primary-fixed":"#dce1ff","secondary-fixed":"#dce1ff","on-tertiary-fixed-variant":"#832700","error-container":"#ffdad6","primary":"#0037b0","surface-container":"#eaedff","surface-container-low":"#f2f3ff","on-secondary-fixed-variant":"#35437b","on-primary":"#ffffff","on-tertiary-fixed":"#390c00"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-lg":"1.5rem","space-md":"1rem","space-xs":"0.25rem","space-sm":"0.5rem","gutter":"1rem","space-xl":"2rem","margin":"1rem"},"fontFamily":{"body-sm":["Inter"],"headline-sm":["Inter"],"headline-lg":["Inter"],"label-lg":["Inter"],"body-lg":["Inter"],"label-md":["Inter"],"label-sm":["Inter"],"body-md":["Inter"],"headline-md":["Inter"],"contract-sheet":["\"Source Serif 4\""]},"fontSize":{"body-sm":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-sm":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-lg":["28px",{"lineHeight":"36px","letterSpacing":"-0.02em","fontWeight":"700"}],"label-lg":["14px",{"lineHeight":"20px","fontWeight":"600"}],"body-lg":["16px",{"lineHeight":"25px","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"600"}],"body-md":["15px",{"lineHeight":"23px","fontWeight":"400"}],"headline-md":["22px",{"lineHeight":"28px","letterSpacing":"-0.015em","fontWeight":"600"}],"contract-sheet":["16px",{"lineHeight":"27px","fontWeight":"400"}]}}}}</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface flex flex-col"><header class="fixed top-0 inset-x-0 z-50 bg-surface/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Go back" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-low transition-colors" onclick="history.back()"><span class="material-symbols-outlined">arrow_back</span></button><h1 class="font-headline-sm text-headline-sm text-on-surface">Clause Inspector</h1></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex flex-col relative w-full px-margin pt-16 pb-safe bg-surface min-h-screen"><div class="flex flex-col w-full pb-8 space-y-4">
+<!-- Drag Handle Indicator -->
+<div class="w-full flex items-center justify-center pt-1 pb-2">
+<div class="w-12 h-1.5 rounded-full bg-outline-variant/60"></div>
+</div>
+<!-- Sheet Context Header -->
+<div class="flex items-center justify-between px-1">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface">Legal Voice Assistant</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-label-sm text-label-sm">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+          Kannada / Kanglish
+        </span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-secondary">description</span>
+        Bengaluru Rental Agreement • Clause 4.2 &amp; 8.2
+      </p>
+</div>
+<button aria-label="Dismiss Sheet" class="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant transition-colors" onclick="history.back()">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Dynamic Waveform & Voice State Box -->
+<div class="rounded-xl bg-surface-container-low p-4 flex flex-col gap-3.5 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-primary-container"></span>
+</span>
+<span class="font-label-md text-label-md text-primary font-semibold tracking-wide uppercase">Spoken Reply in Progress</span>
+</div>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant">Live Synced</span>
+</div>
+<!-- Multi-bar audio waveform visualization -->
+<div class="h-12 w-full flex items-center justify-center gap-1.5 px-2 bg-surface-container-lowest rounded-lg overflow-hidden py-2" id="waveform-container">
+<span class="w-1.5 bg-primary/40 rounded-full h-3 animate-pulse" style="animation-duration: 650ms;"></span>
+<span class="w-1.5 bg-primary/70 rounded-full h-6 animate-pulse" style="animation-duration: 480ms;"></span>
+<span class="w-1.5 bg-primary-container rounded-full h-9 animate-pulse" style="animation-duration: 820ms;"></span>
+<span class="w-1.5 bg-primary rounded-full h-11 animate-pulse" style="animation-duration: 540ms;"></span>
+<span class="w-1.5 bg-primary-container rounded-full h-7 animate-pulse" style="animation-duration: 720ms;"></span>
+<span class="w-1.5 bg-primary/80 rounded-full h-10 animate-pulse" style="animation-duration: 610ms;"></span>
+<span class="w-1.5 bg-primary rounded-full h-8 animate-pulse" style="animation-duration: 900ms;"></span>
+<span class="w-1.5 bg-primary/90 rounded-full h-11 animate-pulse" style="animation-duration: 490ms;"></span>
+<span class="w-1.5 bg-primary-container rounded-full h-6 animate-pulse" style="animation-duration: 780ms;"></span>
+<span class="w-1.5 bg-primary/70 rounded-full h-4 animate-pulse" style="animation-duration: 630ms;"></span>
+<span class="w-1.5 bg-primary/40 rounded-full h-2 animate-pulse" style="animation-duration: 570ms;"></span>
+</div>
+<!-- Spoken Input Bubble (Kanglish Query) -->
+<div class="bg-surface-container-lowest rounded-lg p-3 flex flex-col gap-1.5">
+<div class="flex items-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined text-[16px]">record_voice_over</span>
+<span class="font-label-sm text-label-sm font-semibold uppercase tracking-wider">Your Question (Kanglish)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface font-medium leading-snug">
+        “Lock-in period ಮುಗಿಯೋ ಮುಂಚೆ ಮನೆ ಖಾಲಿ ಮಾಡಿದ್ರೆ deposit ವಾಪಸ್ ಸಿಗುತ್ತಾ?”
+      </p>
+<p class="font-body-sm text-body-sm text-on-surface-variant italic">
+        “If I vacate before the lock-in period ends, do I get my deposit back?”
+      </p>
+</div>
+</div>
+<!-- AI Grounded Legal Response Card -->
+<div class="rounded-xl bg-surface-container-lowest p-4 flex flex-col gap-3 shadow-sm">
+<div class="flex items-center justify-between flex-wrap gap-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container text-primary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified</span>
+        Grounded Legal Answer
+      </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]">shield</span>
+        0 Hallucination Guard
+      </span>
+</div>
+<!-- Vernacular Structured Answer -->
+<div class="bg-surface-container-low rounded-lg p-3">
+<p class="font-body-md text-body-md text-on-surface font-semibold">
+        ಇಲ್ಲ, Clause 8.2 ಪ್ರಕಾರ ನೀವು 6 ತಿಂಗಳ ಒಳಗೆ ಖಾಲಿ ಮಾಡಿದರೆ 1 ತಿಂಗಳ ಬಾಡಿಗೆ (₹25,000) ಕಡಿತವಾಗುತ್ತದೆ.
+      </p>
+</div>
+<!-- Plain English Breakdown -->
+<div class="space-y-1.5">
+<p class="font-label-md text-label-md text-on-surface-variant font-semibold uppercase tracking-wider">
+        Plain English Breakdown
+      </p>
+<p class="font-body-md text-body-md text-on-surface">
+<strong class="font-semibold text-error">No.</strong> According to Clause 8.2, vacating before Month 6 forfeits <strong class="font-semibold">1 full month’s rent (₹25,000)</strong> as an early termination penalty, and requires 2 months prior written notice.
+      </p>
+</div>
+<!-- Statutory Benchmark Pill -->
+<div class="flex items-start gap-2.5 p-3 rounded-lg bg-tertiary-fixed/30 text-on-surface">
+<span class="material-symbols-outlined text-tertiary text-[20px] shrink-0 mt-0.5">gavel</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-md text-label-md font-semibold text-tertiary">Statutory Tenant Protection Benchmark</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+          Warning: Karnataka Model Tenancy Act mandates max 1-month notice without punitive forfeiture. This clause is unusually aggressive.
+        </p>
+</div>
+</div>
+</div>
+<!-- Verified Excerpt Card (Inline Proof) -->
+<div class="rounded-xl bg-surface-container-low p-4 flex flex-col gap-2.5 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="material-symbols-outlined text-[18px]">menu_book</span>
+<span class="font-label-md text-label-md font-semibold">Verified Excerpt (Clause 8.2, Page 2)</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant bg-surface-container-lowest px-2 py-0.5 rounded">Signed Copy</span>
+</div>
+<blockquote class="bg-surface-container-lowest rounded-lg p-3 text-on-surface font-contract-sheet text-contract-sheet italic leading-relaxed">
+      “In the event the Lessee vacates the Scheduled Premises prior to the expiry of the mandatory 6 (six) months lock-in period, the Lessor shall forfeit one month rent from the Security Deposit as liquidated damages and early vacation penalty.”
+    </blockquote>
+<div class="flex items-center justify-between pt-1">
+<button class="inline-flex items-center gap-1 font-label-md text-label-md text-primary font-semibold hover:underline">
+        Inspect in Original Contract
+        <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Match confidence: 99.8%</span>
+</div>
+</div>
+<!-- Audio Playback Controller -->
+<div class="rounded-xl bg-surface-container-lowest p-3 flex flex-col gap-2 shadow-sm">
+<div class="flex items-center justify-between gap-3">
+<!-- Play/Pause Button -->
+<button aria-label="Play or Pause Audio Response" class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0 shadow-sm active:scale-95 transition-transform" id="audio-play-toggle">
+<span class="material-symbols-outlined text-[22px]" id="play-icon" style="font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+<!-- Scrubber Track & Timer -->
+<div class="flex flex-col flex-1 gap-1">
+<div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span id="current-time">0:18</span>
+<span class="text-on-surface font-medium">Kannada Voice (Sunitha)</span>
+<span>0:42</span>
+</div>
+<div class="w-full h-2 bg-surface-container rounded-full overflow-hidden relative cursor-pointer" id="scrubber-bar">
+<div class="h-full bg-primary-container rounded-full w-[43%]"></div>
+</div>
+</div>
+<!-- Playback Controls -->
+<div class="flex items-center gap-1.5 shrink-0">
+<button class="px-2 py-1 rounded bg-surface-container-low text-on-surface font-label-sm text-label-sm font-semibold active:bg-surface-container-high transition-colors" id="speed-toggle">
+          1.0x
+        </button>
+<button class="px-2 py-1 rounded bg-surface-container-high text-primary font-label-sm text-label-sm font-semibold active:bg-surface-container transition-colors" id="lang-audio-toggle">
+          ಕನ್ನಡ
+        </button>
+</div>
+</div>
+</div>
+<!-- Quick Follow-Up Voice Chips -->
+<div class="flex flex-col gap-2 pt-1">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-md text-label-md text-on-surface-variant font-semibold">Recommended Follow-ups</span>
+<span class="font-label-sm text-label-sm text-secondary flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[13px]">mic</span> Tap chip to speak
+      </span>
+</div>
+<div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+<button class="shrink-0 px-3.5 py-2 rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-md text-label-md shadow-sm flex items-center gap-1.5 transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[16px] text-primary">chat_bubble_outline</span>
+        How do I negotiate this?
+      </button>
+<button class="shrink-0 px-3.5 py-2 rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-md text-label-md shadow-sm flex items-center gap-1.5 transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[16px] text-primary">format_paint</span>
+        Can owner deduct painting fee?
+      </button>
+<button class="shrink-0 px-3.5 py-2 rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-md text-label-md shadow-sm flex items-center gap-1.5 transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[16px] text-primary">send</span>
+        Draft WhatsApp response
+      </button>
+</div>
+</div>
+<!-- Bottom Interactive Action Area -->
+<div class="pt-2 flex flex-col gap-3 items-center">
+<!-- Big Microphone Button with Pulse Rings -->
+<div class="relative flex items-center justify-center">
+<span class="animate-ping absolute inline-flex h-20 w-20 rounded-full bg-primary-container opacity-20"></span>
+<span class="absolute inline-flex h-16 w-16 rounded-full bg-primary/10"></span>
+<button aria-label="Voice Input Trigger" class="relative z-10 w-16 h-16 rounded-full bg-primary-container text-on-primary flex items-center justify-center shadow-lg active:scale-90 transition-transform" id="mic-action-btn">
+<span class="material-symbols-outlined text-[32px]">mic</span>
+</button>
+</div>
+<div class="flex flex-col items-center gap-0.5 text-center">
+<span class="font-label-md text-label-md text-on-surface font-semibold" id="mic-label">Hold to Ask / Tap to Stop</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Speaks &amp; understands Kannada, English &amp; Kanglish</span>
+</div>
+<!-- Secondary Utility Button Row -->
+<div class="w-full grid grid-cols-2 gap-2.5 pt-1">
+<button class="w-full py-2.5 px-3 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px] text-secondary">playlist_add</span>
+        Add to Negotiate
+      </button>
+<button class="w-full py-2.5 px-3 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md font-semibold flex items-center justify-center gap-1.5 shadow-sm active:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[18px] text-secondary">content_copy</span>
+        Copy Answer
+      </button>
+</div>
+</div>
+</div>
+<script>
+  (function() {
+    // Interactive toggles for rich sheet behavior
+    const playBtn = document.getElementById('audio-play-toggle');
+    const playIcon = document.getElementById('play-icon');
+    const speedToggle = document.getElementById('speed-toggle');
+    const langToggle = document.getElementById('lang-audio-toggle');
+    const micBtn = document.getElementById('mic-action-btn');
+    const micLabel = document.getElementById('mic-label');
+    const waveform = document.getElementById('waveform-container');
+
+    let isPlaying = true;
+    let speeds = ['1.0x', '1.2x', '1.5x'];
+    let currentSpeedIdx = 0;
+    let isKannada = true;
+    let isListening = false;
+
+    if (playBtn && playIcon) {
+      playBtn.addEventListener('click', function() {
+        isPlaying = !isPlaying;
+        playIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
+        if (waveform) {
+          waveform.style.opacity = isPlaying ? '1' : '0.4';
+        }
+      });
+    }
+
+    if (speedToggle) {
+      speedToggle.addEventListener('click', function() {
+        currentSpeedIdx = (currentSpeedIdx + 1) % speeds.length;
+        speedToggle.textContent = speeds[currentSpeedIdx];
+      });
+    }
+
+    if (langToggle) {
+      langToggle.addEventListener('click', function() {
+        isKannada = !isKannada;
+        langToggle.textContent = isKannada ? 'ಕನ್ನಡ' : 'English';
+      });
+    }
+
+    if (micBtn && micLabel) {
+      micBtn.addEventListener('click', function() {
+        isListening = !isListening;
+        if (isListening) {
+          micBtn.classList.remove('bg-primary-container');
+          micBtn.classList.add('bg-error');
+          micLabel.textContent = 'Listening to your question...';
+        } else {
+          micBtn.classList.remove('bg-error');
+          micBtn.classList.add('bg-primary-container');
+          micLabel.textContent = 'Hold to Ask / Tap to Stop';
+        }
+      });
+    }
+  })();
+</script></main></body></html>

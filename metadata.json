@@ -1,0 +1,6 @@
+{
+  "name": "LawLens AI — Consumer Legal Clarity",
+  "description": "Understand any Indian consumer contract in 60 seconds in your language — with on-device PII shielding, clause-by-clause risk X-ray, regional voice walkthroughs, and polite negotiation drafts.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
