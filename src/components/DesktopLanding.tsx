@@ -1,7 +1,11 @@
 import React, { useRef, useState } from 'react';
 import type { AuditResult, LanguageCode, VaultDocument } from '../types/contract';
 import { ALL_PRESETS } from '../data/presets';
+import { estimateDocBytes, MAX_TOTAL_BYTES } from '../utils/vaultStore';
 import { Icon } from './Icons';
+
+const formatBytes = (bytes: number): string =>
+  bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 
 interface DesktopLandingProps {
   language: LanguageCode;
@@ -43,6 +47,9 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const vaultBytes = vaultDocs.reduce((sum, doc) => sum + estimateDocBytes(doc), 0);
+  const vaultPercent = Math.min(100, Math.round((vaultBytes / MAX_TOTAL_BYTES) * 100));
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -357,7 +364,12 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
                   { icon: 'speed', title: '60-Sec Engine', sub: 'Parallel Clause Scan', warn: false },
                   { icon: 'gavel', title: 'Statutory Check', sub: 'Real Estate & Labor', warn: false },
                   { icon: 'warning', title: 'Unilateral Traps', sub: 'Notice & Penalty Hikes', warn: true },
-                  { icon: 'lock_person', title: 'Zero Telemetry', sub: 'PII Never Leaves Browser', warn: false },
+                  {
+                    icon: 'lock_person',
+                    title: 'On-Device PII Masking',
+                    sub: '1500px Downscale · EXIF Stripped',
+                    warn: false,
+                  },
                 ].map((b) => (
                   <div
                     key={b.title}
@@ -440,13 +452,13 @@ export const DesktopLanding: React.FC<DesktopLandingProps> = ({
                   <div className="flex justify-between items-center text-[11px] text-on-surface-variant">
                     <span>Local Storage Sandbox:</span>
                     <span className="font-bold text-on-surface tabular-nums">
-                      {(vaultDocs.length * 0.8 + 0.8).toFixed(1)} MB / 50 MB
+                      {formatBytes(vaultBytes)} / {MAX_TOTAL_BYTES / 1024} KB
                     </span>
                   </div>
                   <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
                     <div
                       className="bg-primary-container h-full rounded-full transition-all"
-                      style={{ width: `${Math.min(100, vaultDocs.length * 4 + 2)}%` }}
+                      style={{ width: `${vaultPercent}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between pt-1">

@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import type { VaultDocument } from '../types/contract';
 import { RULE_PACKS } from '../data/rulePacks';
 import { maskIndianPII } from '../utils/piiGuard';
+import { estimateDocBytes, MAX_DOC_BYTES, MAX_TOTAL_BYTES } from '../utils/vaultStore';
 import { Icon } from './Icons';
+
+const formatBytes = (bytes: number): string =>
+  bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 
 interface DesktopSubViewsProps {
   view: 'vault' | 'benchmarks' | 'privacy';
@@ -40,6 +44,9 @@ export const DesktopSubViews: React.FC<DesktopSubViewsProps> = ({
 
   const filteredDocs =
     vaultFilter === 'all' ? vaultDocs : vaultDocs.filter((d) => d.audit.category === vaultFilter);
+
+  const vaultBytes = vaultDocs.reduce((sum, doc) => sum + estimateDocBytes(doc), 0);
+  const vaultPercent = Math.min(100, Math.round((vaultBytes / MAX_TOTAL_BYTES) * 100));
 
   return (
     <div className="min-h-screen flex flex-col bg-surface text-on-surface">
@@ -114,6 +121,17 @@ export const DesktopSubViews: React.FC<DesktopSubViewsProps> = ({
                 <p className="text-sm text-on-surface-variant mt-1">
                   All scans, private voice notes, and redacted reports live strictly in your browser storage.
                 </p>
+                <div className="mt-3 flex items-center gap-2.5 max-w-sm">
+                  <div className="flex-1 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                    <div
+                      className="bg-primary-container h-full rounded-full transition-all"
+                      style={{ width: `${vaultPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-bold text-on-surface tabular-nums whitespace-nowrap">
+                    {formatBytes(vaultBytes)} / {MAX_TOTAL_BYTES / 1024} KB
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -199,6 +217,10 @@ export const DesktopSubViews: React.FC<DesktopSubViewsProps> = ({
               ) : (
                 filteredDocs.map((doc) => {
                   const isHigh = doc.audit.summary.risk_score >= 60;
+                  const docBytes = estimateDocBytes(doc);
+                  const isOverDocBudget = docBytes > MAX_DOC_BYTES;
+                  const isIncomplete = doc.audit.completeness.status === 'missing_pages';
+                  const firstGap = doc.audit.completeness.missing_gaps[0];
                   return (
                     <div
                       key={doc.id}
@@ -261,6 +283,31 @@ export const DesktopSubViews: React.FC<DesktopSubViewsProps> = ({
                         <p className="text-xs text-on-surface-variant">
                           {doc.scannedAt} • {doc.audit.meta_badge}
                         </p>
+
+                        {(isIncomplete || isOverDocBudget) && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {isIncomplete && (
+                              <span
+                                title={
+                                  firstGap
+                                    ? `Missing page or annexure: ${firstGap}`
+                                    : 'Some pages are missing from this scan'
+                                }
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50/35 border border-amber-300 text-amber-800"
+                              >
+                                Incomplete scan
+                              </span>
+                            )}
+                            {isOverDocBudget && (
+                              <span
+                                title={`${formatBytes(docBytes)} exceeds the ${MAX_DOC_BYTES / 1024} KB per-document storage cap — this scan is kept in memory only.`}
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50/35 border border-amber-300 text-amber-800"
+                              >
+                                Over budget · {formatBytes(docBytes)}
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         <div className="flex flex-wrap gap-1.5">
                           {doc.audit.findings.slice(0, 2).map((f) => (
