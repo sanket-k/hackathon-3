@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import type { AuditResult, LanguageCode } from '../types/contract';
 import { exportOnePageBriefPDF } from '../utils/pdfBrief';
+import { copyText } from '../utils/clipboard';
 import { Icon } from './Icons';
 
 interface WhatsAppModalProps {
@@ -34,15 +35,19 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
 
   if (!open) return null;
 
-  const handleCopy = () => {
-    navigator.clipboard?.writeText(message).catch(() => {});
-    onToast('WhatsApp message copied to clipboard!');
+  const handleCopy = async () => {
+    const copied = await copyText(message);
+    onToast(copied ? 'WhatsApp message copied to clipboard!' : 'Copy failed — select the message text manually.');
   };
 
-  const handleOpenWhatsApp = () => {
+  const handleOpenWhatsApp = async () => {
     const encoded = encodeURIComponent(message);
-    onToast('Prepared WhatsApp share text (copied to clipboard).');
-    navigator.clipboard?.writeText(message).catch(() => {});
+    const copied = await copyText(message);
+    onToast(
+      copied
+        ? 'Prepared WhatsApp share text (copied to clipboard).'
+        : 'Opened WhatsApp — copy failed, paste manually.',
+    );
     const link = document.createElement('a');
     link.href = `https://api.whatsapp.com/send?text=${encoded}`;
     link.target = '_blank';
@@ -143,7 +148,9 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
         <div className="p-4 bg-surface-container-low border-t border-surface-container flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={handleCopy}
+            onClick={() => {
+              void handleCopy();
+            }}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-surface-container-highest text-on-surface hover:bg-surface-container font-semibold text-xs transition-colors cursor-pointer"
           >
             <Icon name="content_copy" className="text-[16px]" />
@@ -151,7 +158,9 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={handleOpenWhatsApp}
+            onClick={() => {
+              void handleOpenWhatsApp();
+            }}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] font-bold text-xs shadow-md transition-all cursor-pointer"
           >
             <Icon name="send" className="text-[18px]" />
