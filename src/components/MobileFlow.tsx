@@ -5,6 +5,8 @@ import { ALL_PRESETS } from '../data/presets';
 import { ORIGINAL_SCAN_DEMO_URL, PHOTO_CHECK_DEMO_URL } from '../utils/ingest';
 import { calculateWayOutAtMonth } from '../utils/wayOutMath';
 import { playRegionalSpeech, stopAllSpeech } from '../utils/audioSync';
+import { buildClausePlaylist, playClausePlaylist } from '../utils/audioPlaylist';
+import { copyText } from '../utils/clipboard';
 import {
   MIN_VOICE_CAPTURE_MS,
   startVoiceCapture,
@@ -60,6 +62,26 @@ const LANG_OPTIONS: Array<{ code: LanguageCode; native: string; name: string }> 
   { code: 'en', native: 'English', name: 'English' },
 ];
 
+/** Test regex is intentionally non-global so `lastIndex` never leaks between `.test()` calls. */
+const ILLEGIBLE_TEST_RE = /\[ILLEGIBLE\]/i;
+const ILLEGIBLE_SPLIT_RE = /(\[ILLEGIBLE\])/gi;
+
+function renderIllegibleSpans(text: string, keyPrefix: string): React.ReactNode {
+  if (!ILLEGIBLE_TEST_RE.test(text)) return text;
+  return text.split(ILLEGIBLE_SPLIT_RE).map((part, idx) =>
+    ILLEGIBLE_TEST_RE.test(part) ? (
+      <span
+        key={`${keyPrefix}-${idx}`}
+        className="underline decoration-amber-500 decoration-2 bg-amber-50/35 rounded px-1 text-amber-800 font-semibold"
+      >
+        {part}
+      </span>
+    ) : (
+      <React.Fragment key={`${keyPrefix}-${idx}`}>{part}</React.Fragment>
+    ),
+  );
+}
+
 export const MobileFlow: React.FC<MobileFlowProps> = ({
   screen,
   onNavigate,
@@ -70,6 +92,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
   activeVaultDoc,
   capturedPhotoUrl,
   telemetryStage,
+  intakeStats,
   onCancelTelemetry,
   onStartPhotoFlow,
   onRunPhotoAnalysis,
@@ -81,6 +104,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
   onClearVault,
   onSaveNote,
   onExportVaultJson,
+  onExportBrief,
   onOpenSecurityModal,
   onSwitchToDesktop,
   isDesktopPreview,
@@ -104,6 +128,11 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
   const [ocrVerified, setOcrVerified] = useState(false);
   const [showOcrPopover, setShowOcrPopover] = useState(false);
   const [showPlainBanner, setShowPlainBanner] = useState(true);
+  const clauseRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // M4/M5 clause walkthrough playlist
+  const playlistRef = useRef<ReturnType<typeof playClausePlaylist> | null>(null);
+  const [isPlaylistPlaying, setIsPlaylistPlaying] = useState(false);
 
   // M6 Negotiate states
   const [selectedAskIds, setSelectedAskIds] = useState<string[]>(() =>
@@ -163,7 +192,82 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
 
   const activeNegotiateDraft = draftOverride !== null ? draftOverride : generatedNegotiateDraft;
 
+  const stats = intakeStats ?? null;
+  const isLaneB = stats?.lane === 'B';
+  const piiBreakdown = useMemo(() => {
+    const counts = stats?.piiCountsByType ?? {};
+    return Object.entries(counts)
+      .filter(([, n]) => typeof n === 'number' && n > 0)
+      .map(([type, n]) => `${type.toUpperCase()} ${n}`)
+      .join(' · ');
+  }, [stats]);
+
+  const gateDesc = (step: number): string => {
+    if (step === 1) {
+      if (!stats) return 'Preparing…';
+      if (stats.lane === 'B') {
+        return `${stats.blurVerdict ?? 'Unmeasured'}${typeof stats.blurScore === 'number' ? ` • score ${stats.blurScore}` : ''}`;
+      }
+      return `${stats.pageCount ?? 0} pages • ${stats.wordCount ?? 0} words`;
+    }
+    if (step === 2) {
+      if (!stats) return 'Preparing…';
+      const masked = `${stats.piiTotalMasked ?? 0} tokens masked on-device`;
+      return piiBreakdown ? `${masked} • ${piiBreakdown}` : masked;
+    }
+    if (step === 3) {
+      return `Matching ${stats?.packDisplayName ?? audit.rule_pack_applied.display_name}`;
+    }
+    return 'Cross-referencing clause excerpts verbatim';
+  };
+
+  const gateTime = (step: number, fallback: string): string => {
+    const ms = stats?.gateTimingsMs?.[step];
+    return typeof ms === 'number' ? `${ms}ms` : fallback;
+  };
+
+  const stopPlaylist = () => {
+    playlistRef.current?.stop();
+    playlistRef.current = null;
+    setIsPlaylistPlaying(false);
+  };
+
+  const handleTogglePlaylist = () => {
+    if (isPlaylistPlaying) {
+      stopPlaylist();
+      return;
+    }
+    const items = buildClausePlaylist(audit.summary.walkthrough_intro_spoken[language], audit.findings, language);
+    if (items.length === 0) {
+      onToast('Nothing to play for this contract yet.');
+      return;
+    }
+    stopAllSpeech();
+    setIsPlayingVoice(false);
+    setIsPlaylistPlaying(true);
+    playlistRef.current = playClausePlaylist(items, language, {
+      onItemStart: (item) => {
+        if (item.kind !== 'clause' || !item.clauseId) return;
+        setFocusedClauseId(item.clauseId);
+        const node = clauseRefs.current[item.clauseId];
+        node?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      },
+      onComplete: () => {
+        playlistRef.current = null;
+        setIsPlaylistPlaying(false);
+      },
+    });
+  };
+
+  useEffect(() => stopPlaylist, []);
+
+  // A walkthrough must not outlive the report/inspector screens it narrates.
+  useEffect(() => {
+    if (screen !== 'm4_report' && screen !== 'm5_inspector') stopPlaylist();
+  }, [screen]);
+
   const handlePlayAudio = async (text: string) => {
+    stopPlaylist();
     if (isPlayingVoice) {
       stopAllSpeech();
       setIsPlayingVoice(false);
@@ -607,11 +711,59 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     <span className="w-2 h-2 rounded-full bg-primary-container" />
                     100ms Quality Check
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[11px] flex items-center gap-1">
-                    <Icon name="check_circle" className="text-[14px]" />
-                    Sharp &amp; Legible
-                  </span>
+                  {isLaneB ? (
+                    <span
+                      className={`px-2 py-0.5 rounded-full font-bold text-[11px] flex items-center gap-1 ${
+                        stats?.blocked || stats?.blurVerdict === 'Blurry — Retake Suggested'
+                          ? 'bg-amber-50 text-amber-800'
+                          : 'bg-emerald-50 text-emerald-700'
+                      }`}
+                    >
+                      <Icon
+                        name={stats?.blocked || stats?.blurVerdict === 'Blurry — Retake Suggested' ? 'warning' : 'check_circle'}
+                        className="text-[14px]"
+                      />
+                      {stats?.blurVerdict ?? 'Unmeasured'}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-bold text-[11px]">
+                      {stats ? 'Not applicable' : 'Preparing…'}
+                    </span>
+                  )}
                 </div>
+
+                <div className="px-3.5 py-2 flex items-center justify-between gap-2 border-b border-outline-variant/30">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] font-semibold uppercase tracking-wider ${
+                      isLaneB
+                        ? 'bg-amber-50/35 border-amber-300 text-amber-800'
+                        : 'bg-surface-container border-outline-variant/40 text-on-surface-variant'
+                    }`}
+                  >
+                    <Icon name={isLaneB ? 'photo_camera' : 'description'} className="text-[13px]" />
+                    {!stats
+                      ? 'Lane detection pending'
+                      : isLaneB
+                        ? 'Image Mode · EXIF stripped · Zero-retention'
+                        : 'Vector PDF · On-device extract'}
+                  </span>
+                  {isLaneB && typeof stats?.blurScore === 'number' && (
+                    <span className="font-mono text-[10px] text-on-surface-variant tabular-nums shrink-0">
+                      Laplacian {stats.blurScore}
+                    </span>
+                  )}
+                </div>
+
+                {isLaneB && (stats?.blocked || stats?.blurVerdict === 'Blurry — Retake Suggested') && (
+                  <div className="px-3.5 py-2 bg-amber-50/35 border-b border-amber-300 text-[11px] font-semibold text-amber-800 flex items-center gap-1.5">
+                    <Icon name="warning" className="text-[14px]" />
+                    <span>
+                      {stats?.blocked
+                        ? `Fail-closed: ${stats.blockReason ?? 'scan did not clear the quality gate'}`
+                        : 'Low sharpness detected — retake the photo for a reliable read'}
+                    </span>
+                  </div>
+                )}
 
                 <div className="relative bg-stone-200 h-[270px] overflow-hidden flex items-center justify-center">
                   <img
@@ -632,7 +784,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     <div className="absolute top-8 left-6 right-6 bg-slate-900/90 text-white px-3 py-2 rounded-xl flex items-center justify-between gap-2 text-[11px] shadow-lg">
                       <span className="flex items-center gap-1.5 font-semibold">
                         <Icon name="shield" className="text-[15px] text-emerald-400" />
-                        Blacked out: Aadhaar &amp; Phone (2)
+                        Header region redacted on-device before upload
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-white/15 font-bold text-[10px]">MASKED</span>
                     </div>
@@ -783,10 +935,31 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     <p className="text-[11px] text-on-surface-variant truncate">{audit.meta_badge}</p>
                   </div>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-surface-container text-primary-container text-[11px] font-bold shrink-0">
-                  ● Scanning
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0 ${
+                    stats?.blocked
+                      ? 'bg-red-50 text-error border border-red-300'
+                      : 'bg-surface-container text-primary-container'
+                  }`}
+                >
+                  {stats?.blocked ? '■ Halted' : '● Scanning'}
                 </span>
               </div>
+
+              {stats?.blocked && (
+                <div className="rounded-2xl bg-red-50/35 border border-red-300 p-3.5 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-error">
+                    <Icon name="gpp_bad" className="text-[16px]" />
+                    <span>Scan stopped — fail-closed</span>
+                  </div>
+                  <p className="text-[11px] text-red-950 leading-relaxed">
+                    {stats.blockReason ?? 'The on-device PII shield blocked this upload.'}
+                  </p>
+                  <p className="text-[11px] font-semibold text-red-900">
+                    Re-scan required — nothing was uploaded for this attempt.
+                  </p>
+                </div>
+              )}
 
               {/* Neural X-Ray Laser Card */}
               <div className="rounded-2xl bg-white border border-outline-variant/40 p-4 space-y-3">
@@ -796,7 +969,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     Neural X-Ray Pass
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-surface-container text-primary-container font-bold text-[11px] tabular-nums">
-                    {Math.min(100, telemetryStage * 25)}% Analyzed
+                    {stats?.blocked ? 'Halted' : `${Math.min(100, telemetryStage * 25)}% Analyzed`}
                   </span>
                 </div>
 
@@ -821,37 +994,39 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-xs font-bold text-on-surface px-1">
                   <span>Inspection Gates</span>
-                  <span className="text-primary-container">Stage {telemetryStage} of 4</span>
+                  <span className={stats?.blocked ? 'text-error' : 'text-primary-container'}>
+                    {stats?.blocked ? 'Halted — fail-closed' : `Stage ${telemetryStage} of 4`}
+                  </span>
                 </div>
 
                 {[
                   {
                     step: 1,
                     title: 'Blur & Legibility Check',
-                    desc: '100% sharp • Full character clarity',
-                    time: '0.2s',
+                    desc: gateDesc(1),
+                    time: gateTime(1, '0.2s'),
                   },
                   {
                     step: 2,
                     title: 'Local PII Shield Masking',
-                    desc: `${audit.pii_masked_tokens.length} sensitive tokens masked on-device`,
-                    time: '0.4s',
+                    desc: gateDesc(2),
+                    time: gateTime(2, '0.4s'),
                   },
                   {
                     step: 3,
                     title: 'Rule Pack Match',
-                    desc: `Matching ${audit.rule_pack_applied.display_name}`,
-                    time: `${audit.rule_pack_applied.match_pct}%`,
+                    desc: gateDesc(3),
+                    time: gateTime(3, `${stats?.packMatchPct ?? audit.rule_pack_applied.match_pct}%`),
                   },
                   {
                     step: 4,
                     title: 'Legal Grounding Check',
-                    desc: 'Cross-referencing clause excerpts verbatim',
-                    time: telemetryStage >= 4 ? 'Done' : 'Queued',
+                    desc: gateDesc(4),
+                    time: gateTime(4, telemetryStage >= 4 ? 'Done' : 'Queued'),
                   },
                 ].map((g) => {
-                  const done = telemetryStage > g.step;
-                  const active = telemetryStage === g.step;
+                  const done = telemetryStage > g.step && !stats?.blocked;
+                  const active = telemetryStage === g.step && !stats?.blocked;
                   return (
                     <div
                       key={g.step}
@@ -916,6 +1091,29 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
               </div>
 
               <div className="px-4 space-y-4">
+                {audit.completeness.status === 'missing_pages' && (
+                  <div className="rounded-2xl bg-amber-50/35 border border-amber-300 p-3.5 space-y-2.5">
+                    <div className="flex items-start gap-2">
+                      <Icon name="warning" className="text-[18px] text-amber-700 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-800 block">
+                          Incomplete Scan
+                        </span>
+                        <p className="text-xs font-bold text-amber-800 leading-relaxed">
+                          {audit.completeness.missing_gaps.join(' • ') || 'Some pages were not captured.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onToast('Added missing page request to your Negotiate draft.')}
+                      className="w-full min-h-[40px] rounded-xl bg-amber-700 text-white text-xs font-bold cursor-pointer"
+                    >
+                      Request Missing Pages
+                    </button>
+                  </div>
+                )}
+
                 {/* Hero Exposure Card */}
                 <div className="rounded-2xl bg-white border border-outline-variant/40 p-4 space-y-3 shadow-xs">
                   <div className="flex items-center justify-between text-xs">
@@ -1031,11 +1229,11 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 <div className="flex items-center gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => handlePlayAudio(audit.summary.walkthrough_intro_spoken[language])}
+                    onClick={handleTogglePlaylist}
                     className="flex-1 min-h-[46px] rounded-2xl bg-primary-container text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   >
-                    <Icon name={isPlayingVoice ? 'stop' : 'play_arrow'} className="text-[18px]" filled />
-                    <span>Explain in {langObj.name} (52s)</span>
+                    <Icon name={isPlaylistPlaying ? 'stop' : 'play_arrow'} className="text-[18px]" filled />
+                    <span>{isPlaylistPlaying ? 'Stop walkthrough' : `Play walkthrough in ${langObj.name}`}</span>
                   </button>
                   <button
                     type="button"
@@ -1087,6 +1285,17 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 </button>
               </div>
 
+              {isPlaylistPlaying && (
+                <button
+                  type="button"
+                  onClick={stopPlaylist}
+                  className="w-full min-h-[40px] rounded-xl bg-surface-container text-primary-container text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Icon name="stop" className="text-[16px]" filled />
+                  Stop walkthrough
+                </button>
+              )}
+
               {inspectorTab === 'text' ? (
                 <div className="rounded-2xl bg-white border border-outline-variant/40 p-5 space-y-4 shadow-xs">
                   <div className="flex items-center justify-between text-[11px] font-mono text-on-surface-variant">
@@ -1098,9 +1307,15 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                     {audit.clauses.map((c) => {
                       const active = c.clause_id === focusedClauseId || c.severity === 'critical';
                       const hasToken = c.ocr_highlight_token && c.text.includes(c.ocr_highlight_token);
+                      const hasIllegible = ILLEGIBLE_TEST_RE.test(c.text);
+                      const fullyIllegible =
+                        hasIllegible && c.text.replace(/\[ILLEGIBLE\]/gi, '').trim().length === 0;
                       return (
                         <div
                           key={c.clause_id}
+                          ref={(el) => {
+                            clauseRefs.current[c.clause_id] = el;
+                          }}
                           className={
                             active
                               ? 'rounded-xl border-l-4 border-error bg-red-50/50 p-3.5 space-y-1.5'
@@ -1115,7 +1330,7 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                           <p className="font-serif text-[15px] leading-relaxed text-on-surface">
                             {hasToken ? (
                               <>
-                                {c.text.split(c.ocr_highlight_token!)[0]}
+                                {renderIllegibleSpans(c.text.split(c.ocr_highlight_token!)[0], `${c.clause_id}-a`)}
                                 <button
                                   type="button"
                                   onClick={() => setShowOcrPopover((s) => !s)}
@@ -1125,12 +1340,32 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                                 >
                                   {c.ocr_highlight_token}
                                 </button>
-                                {c.text.split(c.ocr_highlight_token!).slice(1).join(c.ocr_highlight_token!)}
+                                {renderIllegibleSpans(
+                                  c.text.split(c.ocr_highlight_token!).slice(1).join(c.ocr_highlight_token!),
+                                  `${c.clause_id}-b`,
+                                )}
                               </>
                             ) : (
-                              c.text
+                              renderIllegibleSpans(c.text, `${c.clause_id}-full`)
                             )}
                           </p>
+                          {hasIllegible && (
+                            <div className="space-y-1.5 pt-0.5">
+                              {fullyIllegible && (
+                                <p className="text-[11px] font-semibold text-amber-800 leading-relaxed">
+                                  This span could not be read clearly — check the original page before relying on it.
+                                </p>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setInspectorTab('photo')}
+                                className="inline-flex items-center gap-1 min-h-[32px] px-2.5 rounded-lg bg-amber-50/35 border border-amber-300 text-amber-800 text-[11px] font-semibold uppercase tracking-wider cursor-pointer"
+                              >
+                                <Icon name="image" className="text-[14px]" />
+                                View Original Scan
+                              </button>
+                            </div>
+                          )}
                           {hasToken && showOcrPopover && (
                             <div className="p-3 rounded-xl bg-white border border-outline-variant/50 shadow-md text-xs space-y-2">
                               <p className="font-bold text-on-surface">
@@ -1347,8 +1582,9 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard?.writeText(activeNegotiateDraft).catch(() => {});
-                    onToast('Draft copied to clipboard!');
+                    void copyText(activeNegotiateDraft).then((ok) => {
+                      onToast(ok ? 'Draft copied to clipboard!' : 'Copy failed — select and copy the draft manually.');
+                    });
                   }}
                   className="min-h-[46px] px-4 rounded-xl bg-white border border-outline-variant/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                 >
@@ -1642,14 +1878,32 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard?.writeText(qaItem?.answer_en || '').catch(() => {});
-                      onToast('Answer copied!');
+                      void copyText(qaItem?.answer_en || '').then((ok) => {
+                        onToast(ok ? 'Answer copied!' : 'Copy failed — select the answer text manually.');
+                      });
                     }}
                     className="min-h-[44px] rounded-xl bg-white border border-outline-variant/40 text-xs font-bold cursor-pointer"
                   >
                     Copy Answer
                   </button>
                 </div>
+
+                {onExportBrief && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedClauseIds = audit.findings
+                        .filter((f) => selectedAskIds.includes(f.finding_id))
+                        .map((f) => f.clause_id);
+                      onExportBrief({ selectedClauseIds, tone });
+                      onToast('Preparing your 1-page brief PDF…');
+                    }}
+                    className="w-full min-h-[44px] rounded-xl bg-white border border-outline-variant/40 text-primary-container text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Icon name="picture_as_pdf" className="text-[18px]" />
+                    <span>Download 1-page brief PDF</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
