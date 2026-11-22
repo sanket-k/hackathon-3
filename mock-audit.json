@@ -1,0 +1,406 @@
+{
+  "id": "blr-rental-hsr-mock",
+  "title": "Bengaluru Rental Agreement • Flat 12B HSR Layout",
+  "subtitle": "11-Month Tenancy • Page 2 of 4 Missing",
+  "meta_badge": "3 of 4 Pages • 1.9 MB • KA Reg.",
+  "category": "rental",
+  "lane": "B",
+  "original_photo_url": "/mock/scans/hsr-sector-2-flat-12b-page1.jpg",
+  "stamp_header": {
+    "reg_line": "KARNATAKA REG. ACT NO. 15 // DOC ID: BLR-HSR-2025-1187",
+    "stamp_value": "STAMP VALUE: ₹1,000 PAID",
+    "doc_title": "RESIDENTIAL LEASE AGREEMENT",
+    "doc_subtitle": "(HSR LAYOUT / WARD 174, BENGALURU URBAN)",
+    "recitals": "THIS AGREEMENT is entered into on this 12th day of February, 2025 between [LESSOR_NAME_REDACTED], hereinafter referred to as the \"Lessor\", and [LESSEE_NAME_REDACTED], hereinafter referred to as the \"Lessee\", in respect of the residential premises bearing No. 12B, 2nd Sector, HSR Layout.",
+    "stamp_cert_id": "IN-KA09284472190514P",
+    "stamp_issued": "ISSUED: 12-FEB-2025",
+    "lessor_name": "Mrs. Lakshmi Narayan",
+    "lessee_name": "Ms. Ananya Rao"
+  },
+  "completeness": {
+    "status": "missing_pages",
+    "missing_gaps": [
+      "Clause numbering jumps from Clause 4 directly to Clause 7 (Clauses 5 and 6 are absent). Page 2 of 4 appears to be missing from the upload — request the complete agreement before signing.",
+      "The Arbitration and Dispute Resolution clause referenced in the recitals does not appear anywhere in the uploaded pages. Execution should stay paused until the full document is verified."
+    ]
+  },
+  "pii_masked_tokens": [
+    {
+      "label": "Lessor Full Name",
+      "masked_preview": "[LESSOR_NAME_REDACTED]",
+      "status": "MASKED"
+    },
+    {
+      "label": "Lessee Aadhaar ID",
+      "masked_preview": "XXXX-XXXX-4471",
+      "status": "HASHED"
+    },
+    {
+      "label": "Lessor Bank Account / IFSC",
+      "masked_preview": "HDFC000**** / 5010023****",
+      "status": "REDACTED"
+    },
+    {
+      "label": "Lessee Primary Mobile",
+      "masked_preview": "+91 98450 *****",
+      "status": "MASKED"
+    },
+    {
+      "label": "Sub-Registrar Stamp Serial",
+      "masked_preview": "IN-KA09284472190514P",
+      "status": "VERIFIED LOCAL"
+    }
+  ],
+  "rule_pack_applied": {
+    "pack_id": "in-ka-rental",
+    "display_name": "Karnataka Model Tenancy Act 2021",
+    "is_exact_jurisdiction_match": true,
+    "verified_date": "2026-11-21",
+    "match_pct": 78
+  },
+  "summary": {
+    "risk_score": 74,
+    "risk_band": "critical",
+    "risk_band_label": "74 · Incomplete Scan",
+    "rupee_exposure_inr": 288000,
+    "exposure_caption": "above statutory norms + missing pages",
+    "breakdown_cards": [
+      {
+        "label": "Deposit Lock",
+        "value": "₹3,20,000",
+        "sublabel": "Cap: ₹64,000",
+        "tone": "error"
+      },
+      {
+        "label": "Escalation Hike",
+        "value": "₹3,840/mo",
+        "sublabel": "+12% Unilateral",
+        "tone": "caution"
+      },
+      {
+        "label": "Exit Risk (Mo 4)",
+        "value": "₹96,000",
+        "sublabel": "6-Mo Lock-in + 2-Mo Notice",
+        "tone": "error"
+      }
+    ],
+    "alert_banner": "Bengaluru Tenancy Alert: A 10-month interest-free deposit of ₹3,20,000 and a 12% automatic escalation both exceed Section 10 KMTA benchmarks — and Page 2 of 4 (Clauses 5–6) is missing, so the lock-in and notice terms cannot be fully read.",
+    "top_3_bullets": [
+      {
+        "title": "₹3,20,000 security deposit is 5x the legal cap",
+        "detail": "Ten months of rent is surrendered interest-free upfront. Section 10 of the Karnataka Model Tenancy Act caps residential deposits at two months (₹64,000)."
+      },
+      {
+        "title": "Page 2 missing: Clause 4 jumps straight to Clause 7",
+        "detail": "Clauses 5 and 6 — likely maintenance, sub-letting and arbitration — are absent from the scan. Never sign a lease with missing middle pages."
+      },
+      {
+        "title": "6-Month lock-in with ₹96,000 exit cost and 12% renewal hike",
+        "detail": "Leaving in Month 4 forfeits one month rent (₹32,000) plus two months mandatory notice rent, and renewal auto-escalates base rent to ₹35,840 without negotiation."
+      }
+    ],
+    "walkthrough_intro_spoken": {
+      "kn": "ನಮಸ್ಕಾರ ಅನನ್ಯಾ ಅವರೇ. ಈ ಬಾಡಿಗೆ ಒಪ್ಪಂದದಲ್ಲಿ ಹತ್ತು ತಿಂಗಳ ಠೇವಣಿ, ಅಂದ್ರೆ ಮೂರು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ ರೂಪಾಯಿ ಕೇಳಿದ್ದಾರೆ. ಕರ್ನಾಟಕ ಬಾಡಿಗೆ ನಿಯಮದ ಪ್ರಕಾರ ಎರಡು ತಿಂಗಳಿಗಿಂತ ಹೆಚ್ಚು ಕೇಳುವಂತಿಲ್ಲ. ಜೊತೆಗೆ ಎರಡನೇ ಪುಟ ಸ್ಕ್ಯಾನ್‌ನಲ್ಲಿ ಇಲ್ಲ, ಕ್ಲಾಸ್ ನಾಲ್ಕರ ನಂತರ ನೇರವಾಗಿ ಏಳು ಬರುತ್ತದೆ.",
+      "hi": "नमस्ते अनन्या जी। इस रेंट एग्रीमेंट में दस महीने का डिपॉजिट तीन लाख बीस हजार रुपये मांगा गया है, जबकि कर्नाटक रेंट एक्ट में दो महीने की सीमा है। साथ ही स्कैन में पेज दो गायब है — क्लॉज़ 4 के बाद सीधे क्लॉज़ 7 आता है।",
+      "ta": "வணக்கம் அனன்யா அவர்களே. இந்த வாடகை ஒப்பந்தத்தில் பத்து மாத டெபாசிட் மூன்று லட்சத்து இருபதாயிரம் ரூபாய் கேட்கப்பட்டுள்ளது. கர்நாடக விதிப்படி இரண்டு மாத வரம்பு மட்டுமே. மேலும் ஸ்கேனில் பக்கம் இரண்டு இல்லை, பிரிவு நான்கிற்குப் பின் நேரடியாக ஏழு வருகிறது.",
+      "en": "Before you sign this HSR Layout lease, three things need attention: a ten-month security deposit of three lakh twenty thousand rupees, a six-month lock-in with a ninety-six thousand rupee exit cost, and a missing second page where Clause 4 jumps straight to Clause 7."
+    },
+    "audio_duration_label": "1:22 min • Deposit cap, exit trap & missing page"
+  },
+  "clauses": [
+    {
+      "clause_id": "clause-4-1",
+      "section_label": "Clause 4.1 • Safe Baseline",
+      "page_num": 2,
+      "line_ref": "Lines 26–38",
+      "severity": "safe",
+      "badge_label": "Clause 4.1 • Safe Baseline",
+      "text": "4.1 Monthly Rent: The Lessee shall pay to the Lessor a monthly rent of ₹32,000/- (Rupees Thirty-Two Thousand Only) on or before the 5th day of each successive English calendar month by direct NEFT/RTGS transfer to the Lessor account. BESCOM electricity and BWSSB water shall be billed strictly against separate sub-meter readings."
+    },
+    {
+      "clause_id": "clause-4-2",
+      "section_label": "Clause 4.2 • Critical Discrepancy",
+      "page_num": 2,
+      "line_ref": "Lines 39–58",
+      "severity": "critical",
+      "badge_label": "Clause 4.2 • Critical Discrepancy",
+      "right_badge": "Exceeds KMTA Sec 10",
+      "text": "4.2 Security Deposit: The Lessee shall deposit with the Lessor an interest-free refundable caution deposit of ₹3,20,000/- (Rupees Three Lakhs Twenty Thousand Only), being equivalent to ten months rent, prior to handover of keys. The Lessor may deduct repainting charges, deep-cleaning debits, society dues and any unspecified breakages before returning the balance within 60 days of physical handover.",
+      "ocr_highlight_token": "₹3,20,000/-",
+      "ocr_confidence": 98.6,
+      "ocr_verified": false,
+      "warning_footer": "10-month deposit is 500% over the statutory 2-month threshold"
+    },
+    {
+      "clause_id": "clause-7-1",
+      "section_label": "Clause 7.1 • High Penalty Lock-In",
+      "page_num": 3,
+      "line_ref": "Lines 12–29",
+      "severity": "caution",
+      "badge_label": "Clause 7.1 • High Penalty Lock-In",
+      "right_badge": "Enforceability: Partial",
+      "text": "7.1 Lock-in Period & Early Termination: Neither party shall terminate this agreement during the initial six (6) months (\"Lock-in Window\"). Should the Lessee vacate prior to expiry of the said window, the Lessee shall forfeit one full month rental sum (₹32,000/-) as liquidated damages and shall additionally satisfy two (2) months mandatory advance notice rent."
+    },
+    {
+      "clause_id": "clause-7-3",
+      "section_label": "Clause 7.3 • Critical Liability Shift",
+      "page_num": 3,
+      "line_ref": "Lines 30–47",
+      "severity": "critical",
+      "badge_label": "Clause 7.3 • Critical Liability Shift",
+      "right_badge": "Shifts Lessor Duty",
+      "text": "7.3 Repairs & Entry: The Lessee shall bear the cost and responsibility of all structural repairs including roof seepage, external wall plastering, main electrical line replacement and water sump cleaning. The Lessor or her authorised representatives may enter and inspect the premises at any time without prior notice for the purpose of verification.",
+      "ocr_confidence": 97.2,
+      "warning_footer": "Structural repair liability and entry without notice conflict with KMTA Sections 17 and 22"
+    },
+    {
+      "clause_id": "clause-9-2",
+      "section_label": "Clause 9.2 • Caution Escalation",
+      "page_num": 4,
+      "line_ref": "Lines 8–21",
+      "severity": "caution",
+      "badge_label": "Clause 9.2 • Caution Escalation",
+      "right_badge": "+12% Unilateral",
+      "text": "9.2 Escalation: Upon completion of the initial eleven (11) month tenure, should the tenancy be renewed, the base monthly rent shall stand automatically escalated by 12% (twelve percent) at the sole discretion of the Lessor, without any comparative locality index assessment or separate arbitration."
+    },
+    {
+      "clause_id": "clause-11-4",
+      "section_label": "Clause 11.4 • Safe Obligation",
+      "page_num": 4,
+      "line_ref": "Lines 34–43",
+      "severity": "safe",
+      "badge_label": "Clause 11.4 • Safe Obligation",
+      "text": "11.4 Municipal Dues: Property tax, khata cess and BWSSB sewerage charges in respect of the demised premises shall be borne exclusively by the Lessor and shall not be recoverable from the Lessee during or after the tenancy period."
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "f-deposit",
+      "clause_id": "clause-4-2",
+      "severity": "critical",
+      "category": "deposit",
+      "line_ref": "Lines 39–58",
+      "headline": "Clause 4.2: 10-Month Security Deposit (₹3,20,000)",
+      "statutory_rule_text": "Statutory Rule: Section 10 of the Karnataka Model Tenancy Act, 2021 caps residential security deposits at two months rent (₹64,000). Overcommit demanded: ₹2,56,000.",
+      "plain_explanation": "You are asked to lock ₹3,20,000 interest-free before receiving keys. Under the Model Tenancy Act a residential deposit cannot exceed two months rent, which here is ₹64,000.",
+      "risk_detail": "The Lessor keeps unilateral deduction rights for repainting, cleaning, society dues and \"unspecified breakages\", and may hold the balance for 60 days.",
+      "impact_label": "Impact: ₹2,56,000 excess lock-in",
+      "spoken_script": "ಕ್ಲಾಸ್ ನಾಲ್ಕು ಪಾಯಿಂಟ್ ಎರಡರಲ್ಲಿ ಮೂರು ಲಕ್ಷ ಇಪ್ಪತ್ತು ಸಾವಿರ ರೂಪಾಯಿ ಠೇವಣಿ ಕೇಳಿದ್ದಾರೆ, ಅಂದ್ರೆ ಹತ್ತು ತಿಂಗಳ ಬಾಡಿಗೆ. ಕರ್ನಾಟಕ ಬಾಡಿಗೆ ನಿಯಮದ ಪ್ರಕಾರ ಎರಡು ತಿಂಗಳ ಬಾಡಿಗೆ ಮಾತ್ರ ಕೇಳಬಹುದು.",
+      "verbatim_quote": "The Lessee shall deposit with the Lessor an interest-free refundable caution deposit of ₹3,20,000/- (Rupees Three Lakhs Twenty Thousand Only), being equivalent to ten months rent, prior to handover of keys.",
+      "verification": {
+        "status": "verified",
+        "char_start": 0,
+        "char_end": 206,
+        "jaccard": 1
+      },
+      "rule_ref": {
+        "rule_id": "IN_KA_DEPOSIT_CAP",
+        "basis_type": "statutory_conflict",
+        "citation_label": "Model Tenancy Act: 2-Mo Cap"
+      },
+      "negotiation": {
+        "default_selected": true,
+        "short_title": "Cap Security Deposit at 2 Months (₹64k)",
+        "impact_badge": "Saves ₹2,56,000 lock-in",
+        "polite_ask": "Security deposit: would you be open to a two-month deposit of ₹64,000 instead of ten months, in line with the Karnataka Model Tenancy Act?",
+        "firm_ask": "RE: CLAUSE 4.2 — Section 10 KMTA 2021 caps residential security deposits at two months rent (₹64,000). The current ten-month demand of ₹3,20,000 must be revised.",
+        "replacement_wording": "Lessee shall deposit a refundable sum equivalent to two (2) months rent (₹64,000/-), refundable within 15 days of key handover against an itemised joint inspection report."
+      }
+    },
+    {
+      "finding_id": "f-structural-liability",
+      "clause_id": "clause-7-3",
+      "severity": "critical",
+      "category": "maintenance_liability",
+      "line_ref": "Lines 30–47",
+      "headline": "Clause 7.3: Structural Repairs Shifted to Tenant + Entry Without Notice",
+      "statutory_rule_text": "Statutory Rule: KMTA Sections 17 and 22 place structural repairs on the Lessor and require reasonable prior notice before the landlord enters occupied premises.",
+      "plain_explanation": "Roof seepage, external plastering and main electrical lines are landlord obligations in Karnataka, but this clause hands every one of them to you — and lets the owner walk in without notice.",
+      "risk_detail": "A single roof seepage repair in an HSR Layout older block typically costs ₹40,000–₹90,000, all of which becomes the tenant's liability while rent continues.",
+      "impact_label": "Impact: ₹40,000–₹90,000 unbudgeted repair risk",
+      "spoken_script": "ಕ್ಲಾಸ್ ಏಳು ಪಾಯಿಂಟ್ ಮೂರರಲ್ಲಿ ಚಾವಣಿ ಸೋರಿಕೆ ಮತ್ತು ಮುಖ್ಯ ವಿದ್ಯುತ್ ಲೈನ್ ರಿಪೇರಿ ಬಾಡಿಗೆದಾರರ ಮೇಲೆ ಹಾಕಲಾಗಿದೆ. ಕರ್ನಾಟಕ ನಿಯಮದ ಪ್ರಕಾರ ಇದು ಮಾಲೀಕರ ಜವಾಬ್ದಾರಿ.",
+      "verbatim_quote": "The Lessee shall bear the cost and responsibility of all structural repairs including roof seepage, external wall plastering, main electrical line replacement and water sump cleaning.",
+      "verification": {
+        "status": "verified",
+        "char_start": 0,
+        "char_end": 183,
+        "jaccard": 0.98
+      },
+      "rule_ref": {
+        "rule_id": "IN_KA_STRUCTURAL_REPAIR",
+        "basis_type": "missing_protection",
+        "citation_label": "KMTA Sec 17: Lessor Repairs"
+      },
+      "negotiation": {
+        "default_selected": true,
+        "short_title": "Keep Structural Repairs With Lessor & Require 24h Entry Notice",
+        "impact_badge": "Caps ₹90,000 risk",
+        "polite_ask": "Repairs and entry: could we keep structural repairs such as seepage and main lines with the owner, and agree on 24 hours notice before any visit?",
+        "firm_ask": "RE: CLAUSE 7.3 — Structural repairs are the Lessor's statutory obligation under Section 17 KMTA, and Section 22 requires prior notice before entry. Please revise the clause accordingly.",
+        "replacement_wording": "Lessor shall be responsible for all structural repairs including roof seepage, external walls and main electrical lines; Lessor may inspect after giving the Lessee 24 hours prior written notice."
+      }
+    },
+    {
+      "finding_id": "f-lockin",
+      "clause_id": "clause-7-1",
+      "severity": "caution",
+      "category": "lock_in",
+      "line_ref": "Lines 12–29",
+      "headline": "Clause 7.1: 6-Month Lock-in With ₹96,000 Double Exit Cost",
+      "plain_explanation": "Leaving before Month 6 costs one month rent as liquidated damages (₹32,000) plus two months of notice rent (₹64,000) — ₹96,000 out of pocket on a job transfer.",
+      "risk_detail": "The clause applies even where the tenant offers to help find a replacement tenant, and the deposit deduction is not tied to actual reletting loss.",
+      "impact_label": "Impact: ₹96,000 exit loss",
+      "spoken_script": "ಕ್ಲಾಸ್ ಏಳು ಪಾಯಿಂಟ್ ಒಂದರ ಪ್ರಕಾರ ಆರು ತಿಂಗಳ ಒಳಗೆ ಮನೆ ಖಾಲಿ ಮಾಡಿದರೆ ಒಂದು ತಿಂಗಳ ಬಾಡಿಗೆ ಕಡಿತವಾಗುತ್ತದೆ ಮತ್ತು ಎರಡು ತಿಂಗಳ ನೋಟೀಸ್ ಬಾಡಿಗೆ ಕಟ್ಟಬೇಕು.",
+      "verbatim_quote": "the Lessee shall forfeit one full month rental sum (₹32,000/-) as liquidated damages and shall additionally satisfy two (2) months mandatory advance notice rent.",
+      "verification": {
+        "status": "verified",
+        "char_start": 0,
+        "char_end": 161,
+        "jaccard": 0.96
+      },
+      "rule_ref": {
+        "rule_id": "IN_KA_LOCKIN_EXIT",
+        "basis_type": "above_local_norm",
+        "citation_label": "Mutual 1-Mo Notice Norm"
+      },
+      "negotiation": {
+        "default_selected": false,
+        "short_title": "Mutual 1-Month Notice, No Lock-in Forfeiture",
+        "impact_badge": "Saves ₹64,000",
+        "polite_ask": "Termination: could we use a standard 30-day notice from Month 3, with no separate lock-in forfeiture, provided a replacement tenant is introduced?",
+        "firm_ask": "RE: CLAUSE 7.1 — A six-month lock-in plus two months notice rent is non-standard for Bengaluru residential leases. Please amend to mutual one-month notice.",
+        "replacement_wording": "Either party may terminate after Month 3 with 30 days prior written notice and no liquidated damages, subject to the Lessee assisting with a replacement tenant."
+      }
+    },
+    {
+      "finding_id": "f-escalation",
+      "clause_id": "clause-9-2",
+      "severity": "caution",
+      "category": "escalation",
+      "line_ref": "Lines 8–21",
+      "headline": "Clause 9.2: Unilateral 12% Rent Escalation on Renewal",
+      "plain_explanation": "Bengaluru locality indexation typically runs 5%–8% with mutual written consent. This clause locks in an automatic 12% increase, adding ₹3,840 per month.",
+      "risk_detail": "The escalation applies at the Lessor's sole discretion with no locality index reference and no negotiation window before renewal.",
+      "impact_label": "Impact: +₹46,080/yr",
+      "spoken_script": "ಕ್ಲಾಸ್ ಒಂಬತ್ತು ಪಾಯಿಂಟ್ ಎರಡರಲ್ಲಿ ಹನ್ನೊಂದು ತಿಂಗಳ ನಂತರ ಹನ್ನೆರಡು ಪರ್ಸೆಂಟ್ ಬಾಡಿಗೆ ಹೆಚ್ಚಳ ಮಾಡಲಾಗಿದೆ. ಬೆಂಗಳೂರಿನಲ್ಲಿ ಸಾಮಾನ್ಯವಾಗಿ ಐದರಿಂದ ಎಂಟು ಪರ್ಸೆಂಟ್ ಇರುತ್ತದೆ.",
+      "verbatim_quote": "the base monthly rent shall stand automatically escalated by 12% (twelve percent) at the sole discretion of the Lessor, without any comparative locality index assessment or separate arbitration.",
+      "verification": {
+        "status": "verified",
+        "char_start": 0,
+        "char_end": 194,
+        "jaccard": 0.99
+      },
+      "rule_ref": {
+        "rule_id": "IN_KA_RENT_ESCALATION",
+        "basis_type": "above_local_norm",
+        "citation_label": "Standard Practice: 5–8%"
+      },
+      "negotiation": {
+        "default_selected": true,
+        "short_title": "Limit Renewal Escalation to 6% With Mutual Notice",
+        "impact_badge": "Saves ₹1,920/mo",
+        "polite_ask": "Annual escalation: could we set renewal at 6% on mutual written consent rather than an automatic 12%?",
+        "firm_ask": "RE: CLAUSE 9.2 — Unilateral 12% escalation exceeds Bengaluru norm of 5–8%. Please cap escalation at 6% with mutual written notice 60 days before renewal.",
+        "replacement_wording": "Base monthly rent may be revised by a maximum of 6% upon mutual written renewal, with 60 days prior notice by either party."
+      }
+    }
+  ],
+  "key_terms": [
+    {
+      "label": "Monthly Rent",
+      "in_contract": "₹32,000 / mo",
+      "typical": "₹30,000–₹34,000 / mo",
+      "status": "ok"
+    },
+    {
+      "label": "Security Deposit",
+      "in_contract": "₹3,20,000 (10 mo)",
+      "typical": "₹64,000 (2 mo)",
+      "status": "worse"
+    },
+    {
+      "label": "Annual Escalation",
+      "in_contract": "12% automatic",
+      "typical": "5%–8% mutual",
+      "status": "worse"
+    },
+    {
+      "label": "Lock-in & Exit Notice",
+      "in_contract": "6 mo + 2-mo notice",
+      "typical": "1-mo mutual notice",
+      "status": "worse"
+    },
+    {
+      "label": "Structural Repairs",
+      "in_contract": "Tenant bears all",
+      "typical": "Lessor obligation",
+      "status": "worse"
+    },
+    {
+      "label": "Arbitration Clause",
+      "in_contract": "Referenced, pages missing",
+      "typical": "Present in full",
+      "status": "missing"
+    }
+  ],
+  "missing_clauses": [
+    {
+      "label": "Arbitration & Dispute Resolution",
+      "why_it_matters": "The recitals reference an arbitration mechanism, but Page 2 (Clauses 5 and 6) is absent from the scan, so no dispute route or seat is actually recorded.",
+      "recommended_addendum": "Attach the complete Clause 5–6 text specifying a named arbitrator or Bengaluru civil court jurisdiction before execution."
+    },
+    {
+      "label": "Maintenance & Structural Repair SLA",
+      "why_it_matters": "The agreement shifts every structural cost to the tenant but sets no repair response timeline, allowing rent to continue while seepage or wiring faults stay unresolved.",
+      "recommended_addendum": "Add an SLA requiring the Lessor to complete structural repairs within 15 days of written notice, with rent abated proportionally until completion."
+    },
+    {
+      "label": "Deposit Refund & Itemised Deduction Protocol",
+      "why_it_matters": "No joint exit inspection, no itemised bill requirement and a 60-day refund window leave the tenant unable to contest arbitrary deductions.",
+      "recommended_addendum": "Require a joint photographic exit inspection and itemised bills, with balance refunded within 15 days."
+    }
+  ],
+  "way_out_params": {
+    "mode": "rental",
+    "monthly_rent_inr": 32000,
+    "deposit_inr": 320000,
+    "lock_in_months": 6,
+    "notice_months": 2,
+    "total_months": 11,
+    "flat_exit_deduction_inr": 96000,
+    "negotiated_lock_in_months": 0,
+    "negotiated_flat_deduction_inr": 0
+  },
+  "qa_presets": [
+    {
+      "chip": "Is a 10-month deposit legal?",
+      "question_native": "ಹತ್ತು ತಿಂಗಳ ಡಿಪಾಸಿಟ್ ಕೇಳೋದು ಕಾನೂನು ಪ್ರಕಾರ ಸರಿನಾ?",
+      "question_en": "Is a ten-month security deposit legal in Karnataka?",
+      "answer_native": "ಇಲ್ಲ. ಕರ್ನಾಟಕ ಬಾಡಿಗೆ ನಿಯಮದ ಸೆಕ್ಷನ್ ಹತ್ತರ ಪ್ರಕಾರ ವಸತಿ ಮನೆಗೆ ಎರಡು ತಿಂಗಳ ಬಾಡಿಗೆಗಿಂತ ಹೆಚ್ಚು ಡಿಪಾಸಿಟ್ ಕೇಳುವಂತಿಲ್ಲ.",
+      "answer_en": "No. Section 10 of the Karnataka Model Tenancy Act, 2021 caps residential security deposits at two months rent. Here that is ₹64,000, not ₹3,20,000.",
+      "statutory_note": "Cite Section 10 KMTA 2021; the excess ₹2,56,000 is refundable and negotiable before signing.",
+      "clause_id": "clause-4-2",
+      "excerpt": "The Lessee shall deposit with the Lessor an interest-free refundable caution deposit of ₹3,20,000/- (Rupees Three Lakhs Twenty Thousand Only), being equivalent to ten months rent, prior to handover of keys."
+    },
+    {
+      "chip": "Page 2 is missing — can I sign?",
+      "question_native": "ಎರಡನೇ ಪುಟ ಇಲ್ಲ, ಇದನ್ನ ಸಹಿ ಮಾಡಬಹುದಾ?",
+      "question_en": "The scan jumps from Clause 4 to Clause 7. Should I sign anyway?",
+      "answer_native": "ಬೇಡ. ಕ್ಲಾಸ್ ನಾಲ್ಕರ ನಂತರ ನೇರವಾಗಿ ಏಳು ಬರುತ್ತದೆ, ಅಂದ್ರೆ ಐದು ಮತ್ತು ಆರು ಪುಟ ಕಾಣೆಯಾಗಿದೆ. ಪೂರ್ಣ ಪ್ರತಿ ಸಿಗುವವರೆಗೆ ಸಹಿ ಮಾಡಬೇಡಿ.",
+      "answer_en": "No. Clauses 5 and 6 are absent, so maintenance, sub-letting and arbitration terms are unread. Ask for the complete four-page document and re-scan before signing.",
+      "statutory_note": "An incomplete instrument leaves you bound to terms you have never seen; insist on a full executed copy with each page initialled.",
+      "clause_id": "clause-4-1",
+      "excerpt": "4.1 Monthly Rent: The Lessee shall pay to the Lessor a monthly rent of ₹32,000/- (Rupees Thirty-Two Thousand Only) on or before the 5th day of each successive English calendar month"
+    },
+    {
+      "chip": "Who pays for roof seepage?",
+      "question_native": "ಚಾವಣಿ ಸೋರಿಕೆ ರಿಪೇರಿ ಯಾರು ಮಾಡಬೇಕು?",
+      "question_en": "The roof leaks — is the repair my cost or the landlord's?",
+      "answer_native": "ಕ್ಲಾಸ್ ಏಳು ಪಾಯಿಂಟ್ ಮೂರರಲ್ಲಿ ನಿಮ್ಮ ಮೇಲೆ ಹಾಕಲಾಗಿದೆ, ಆದರೆ ಕರ್ನಾಟಕ ನಿಯಮದ ಪ್ರಕಾರ ಇದು ಮಾಲೀಕರ ಜವಾಬ್ದಾರಿ. ಆದ್ದರಿಂದ ಈ ಷರತ್ತು ಬದಲಾಯಿಸಬೇಕು.",
+      "answer_en": "Clause 7.3 tries to make it yours, but structural repairs including seepage are the Lessor's statutory duty under KMTA Section 17. Negotiate the clause back before signing.",
+      "statutory_note": "Keep the clause deletion in writing; verbal assurances are not enforceable once the lease is registered.",
+      "clause_id": "clause-7-3",
+      "excerpt": "The Lessee shall bear the cost and responsibility of all structural repairs including roof seepage, external wall plastering, main electrical line replacement and water sump cleaning."
+    }
+  ]
+}
