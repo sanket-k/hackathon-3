@@ -35,6 +35,18 @@ const SARVAM_SPEAKER_MAP: Record<LanguageCode, string> = {
   en: 'anushka',
 };
 
+// Sarvam model ids (latest generation). Every failure path below degrades to
+// { fallback_recommended: true, reason } so the client can use browser TTS / local STT.
+const SARVAM_TTS_MODEL = 'bulbul:v4-flash';
+const SARVAM_STT_MODEL = 'saaras:v4';
+
+// bulbul hard-limits text-to-speech input length; keep a conservative ceiling.
+const SARVAM_TTS_MAX_CHARS = 500;
+// saaras sync API accepts short clips only: <= 30 seconds of audio.
+const SARVAM_STT_MAX_SECONDS = 30;
+// saaras:v4 codemix supports up to 50 domain keyterms (bias the decoder toward them).
+const SARVAM_STT_MAX_KEYTERMS = 50;
+
 async function callLLMChat(params: {
   system: string;
   userContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
@@ -279,7 +291,20 @@ async function createApp() {
       provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENROUTER_API_KEY,
     );
     const sarvamConfigured = Boolean(process.env.SARVAM_API_KEY);
-    res.json({ status: 'ok', provider, llmConfigured, sarvamConfigured });
+    res.json({
+      status: 'ok',
+      provider,
+      llmConfigured,
+      sarvamConfigured,
+      sarvam: {
+        tts_model: SARVAM_TTS_MODEL,
+        stt_model: SARVAM_STT_MODEL,
+        stt_mode: 'codemix',
+        tts_max_chars: SARVAM_TTS_MAX_CHARS,
+        stt_max_seconds: SARVAM_STT_MAX_SECONDS,
+        stt_max_keyterms: SARVAM_STT_MAX_KEYTERMS,
+      },
+    });
   });
 
   // 1. OCR Vision Route (contract.ocr@1)
@@ -468,7 +493,7 @@ async function createApp() {
         pace?: number;
       };
       if (typeof text !== 'string' || !text.trim()) {
-        res.status(400).json({ error: 'INVALID_TTS_TEXT', message: 'Text is required.' });
+        res.status(200).json({ fallback_recommended: true, reason: 'INVALID_TTS_TEXT' });
         return;
       }
 
@@ -479,6 +504,10 @@ async function createApp() {
       }
 
       const safeLang: LanguageCode = ALLOWED_LANGS.has(language) ? language : 'kn';
+      // bulbul:v4-flash caps input length; truncate instead of failing the request.
+      const safeText = text.trim().slice(0, SARVAM_TTS_MAX_CHARS);
+      const safePace = Math.max(0.75, Math.min(1.5, Number(pace) || 1.0));
+
       const resp = await fetch('https://api.sarvam.ai/text-to-speech', {
         method: 'POST',
         headers: {
@@ -486,11 +515,11 @@ async function createApp() {
           'api-subscription-key': sarvamKey,
         },
         body: JSON.stringify({
-          inputs: [text.slice(0, 500)],
+          inputs: [safeText],
           target_language_code: SARVAM_LANG_MAP[safeLang],
           speaker: SARVAM_SPEAKER_MAP[safeLang],
-          pace: Math.max(0.75, Math.min(1.5, Number(pace) || 1.0)),
-          model: 'bulbul:v2',
+          pace: safePace,
+          model: SARVAM_TTS_MODEL,
         }),
       });
 
@@ -512,14 +541,31 @@ async function createApp() {
   });
 
   // 5. Sarvam STT Proxy (saaras:v4 / codemix)
+  //    Sync speech-to-text: audio must be <= 30s (SARVAM_STT_MAX_SECONDS).
+  //    `mode: 'codemix'` keeps the code-mixed Kannada/Hindi/Tamil + English phrasing
+  //    users actually speak, instead of forcing a pure-script transcript.
+  //    Optional `keyterms` (up to SARVAM_STT_MAX_KEYTERMS) bias the decoder toward
+  //    domain vocabulary such as "security deposit", "lock-in", "EMI", "foreclosure".
   app.post('/api/stt', async (req, res) => {
     try {
-      const { audio_base64, language = 'kn' } = req.body as {
+      const { audio_base64, language = 'kn', keyterms, duration_seconds } = req.body as {
         audio_base64?: string;
         language?: LanguageCode;
+        keyterms?: unknown;
+        duration_seconds?: number;
       };
       if (typeof audio_base64 !== 'string' || !audio_base64) {
-        res.status(400).json({ error: 'INVALID_AUDIO', message: 'audio_base64 is required.' });
+        res.status(200).json({ fallback_recommended: true, reason: 'INVALID_AUDIO' });
+        return;
+      }
+
+      // Enforce the <= 30s sync limit when the client reports a duration.
+      const reportedSeconds = Number(duration_seconds);
+      if (Number.isFinite(reportedSeconds) && reportedSeconds > SARVAM_STT_MAX_SECONDS) {
+        res.json({
+          fallback_recommended: true,
+          reason: `AUDIO_TOO_LONG_MAX_${SARVAM_STT_MAX_SECONDS}S`,
+        });
         return;
       }
 
@@ -529,14 +575,25 @@ async function createApp() {
         return;
       }
 
+      const safeKeyterms = (Array.isArray(keyterms) ? keyterms : [])
+        .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
+        .map((k) => k.trim().slice(0, 64))
+        .slice(0, SARVAM_STT_MAX_KEYTERMS);
+
       const buffer = Buffer.from(audio_base64.replace(/^data:[^;]+;base64,/, ''), 'base64');
       const form = new FormData();
       form.append('file', new Blob([buffer], { type: 'audio/webm' }), 'query.webm');
-      form.append('model', 'saaras:v2');
+      form.append('model', SARVAM_STT_MODEL);
+      form.append('mode', 'codemix');
       const safeLang: LanguageCode = ALLOWED_LANGS.has(language) ? language : 'kn';
       form.append('language_code', SARVAM_LANG_MAP[safeLang]);
+      for (const term of safeKeyterms) {
+        form.append('keyterms', term);
+      }
 
-      const resp = await fetch('https://api.sarvam.ai/speech-to-text-translate', {
+      // codemix mode is only available on /speech-to-text (the legacy
+      // /speech-to-text-translate endpoint has no codemix support).
+      const resp = await fetch('https://api.sarvam.ai/speech-to-text', {
         method: 'POST',
         headers: { 'api-subscription-key': sarvamKey },
         body: form,
@@ -546,10 +603,17 @@ async function createApp() {
         res.json({ fallback_recommended: true, reason: `SARVAM_STT_${resp.status}` });
         return;
       }
-      const data = (await resp.json()) as { transcript?: string; language_code?: string };
+      const data = (await resp.json()) as {
+        transcript?: string;
+        language_code?: string;
+        language_probability?: number;
+      };
       res.json({
         transcript: data.transcript || '',
         detected_language: data.language_code || safeLang,
+        language_probability: data.language_probability,
+        mode: 'codemix',
+        keyterms_used: safeKeyterms.length,
         fallback_recommended: false,
       });
     } catch {
