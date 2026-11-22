@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import type { AuditResult, LanguageCode } from '../types/contract';
-import { exportOnePageBriefPDF } from '../utils/pdfBrief';
+import type { BriefExportRequest } from '../types/ui';
+import { exportBriefPDF, exportOnePageBriefPDF } from '../utils/pdfBrief';
 import { copyText } from '../utils/clipboard';
 import { Icon } from './Icons';
 
@@ -176,14 +177,19 @@ interface BriefModalProps {
   open: boolean;
   onClose: () => void;
   audit: AuditResult;
+  request?: BriefExportRequest;
   onToast: (msg: string) => void;
 }
 
-export const BriefModal: React.FC<BriefModalProps> = ({ open, onClose, audit, onToast }) => {
+export const BriefModal: React.FC<BriefModalProps> = ({ open, onClose, audit, request, onToast }) => {
   if (!open) return null;
 
   const handleDownload = () => {
-    exportOnePageBriefPDF(audit);
+    if (request) {
+      exportBriefPDF(audit, request);
+    } else {
+      exportOnePageBriefPDF(audit);
+    }
     onToast('Downloaded 1-Page Pre-Sign Brief PDF!');
   };
 
