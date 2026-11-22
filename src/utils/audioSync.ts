@@ -16,6 +16,15 @@ const LANG_BCP47: Record<LanguageCode, string> = {
 
 let activeAudioEl: HTMLAudioElement | null = null;
 
+/** True while a Sarvam audio element is live or the device synthesiser is speaking. */
+export function isSpeaking(): boolean {
+  if (activeAudioEl) return true;
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    return window.speechSynthesis.speaking || window.speechSynthesis.pending;
+  }
+  return false;
+}
+
 export function stopAllSpeech(): void {
   if (activeAudioEl) {
     activeAudioEl.pause();
