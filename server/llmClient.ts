@@ -23,12 +23,16 @@ export interface LlmConfig {
 }
 
 export const DEFAULT_LLM_TIMEOUT_MS = 45_000;
+export const MIN_LLM_TIMEOUT_MS = 5_000;
+export const MAX_LLM_TIMEOUT_MS = 120_000;
 
 export function resolveLlmConfig(): LlmConfig {
   const provider = (process.env.LLM_PROVIDER || 'openrouter').toLowerCase() === 'anthropic'
     ? 'anthropic'
     : 'openrouter';
-  const timeoutMs = Number(process.env.LLM_TIMEOUT_MS) || DEFAULT_LLM_TIMEOUT_MS;
+  // LLM_TIMEOUT_MS overrides the per-request LLM timeout, clamped to [5000, 120000] ms.
+  const requestedTimeoutMs = Number(process.env.LLM_TIMEOUT_MS) || DEFAULT_LLM_TIMEOUT_MS;
+  const timeoutMs = Math.min(MAX_LLM_TIMEOUT_MS, Math.max(MIN_LLM_TIMEOUT_MS, requestedTimeoutMs));
   return { provider, timeoutMs, maxRetries: 1 };
 }
 
