@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { AuditResult, LanguageCode, VaultDocument } from '../types/contract';
 import type { IntakeStats, BlackoutStrategy } from '../types/ui';
+import { estimateDocBytes, MAX_TOTAL_BYTES } from '../utils/vaultStore';
 import { ALL_PRESETS } from '../data/presets';
 import { ORIGINAL_SCAN_DEMO_URL, PHOTO_CHECK_DEMO_URL } from '../utils/ingest';
 import { calculateWayOutAtMonth } from '../utils/wayOutMath';
@@ -194,6 +195,15 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
 
   const stats = intakeStats ?? null;
   const isLaneB = stats?.lane === 'B';
+
+  const vaultBytes = useMemo(
+    () => vaultDocs.reduce((sum, doc) => sum + estimateDocBytes(doc), 0),
+    [vaultDocs],
+  );
+  const vaultFootprintLabel =
+    vaultBytes < 1024 ? `${vaultBytes} B` : `${(vaultBytes / 1024).toFixed(1)} KB`;
+  const vaultFootprintPct = Math.min(100, Math.round((vaultBytes / MAX_TOTAL_BYTES) * 100));
+
   const piiBreakdown = useMemo(() => {
     const counts = stats?.piiCountsByType ?? {};
     return Object.entries(counts)
@@ -2139,7 +2149,13 @@ export const MobileFlow: React.FC<MobileFlowProps> = ({
                 <div className="rounded-2xl bg-white border border-outline-variant/40 p-4 space-y-3">
                   <div className="flex justify-between text-xs font-bold">
                     <span>Local Storage Footprint</span>
-                    <span className="font-mono">{(vaultDocs.length * 0.8 + 0.8).toFixed(1)} MB / 50 MB</span>
+                    <span className="font-mono">{vaultFootprintLabel} / {MAX_TOTAL_BYTES / 1024} KB</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-surface-container-highest overflow-hidden">
+                    <div
+                      className="h-full bg-primary-container transition-all duration-300"
+                      style={{ width: `${vaultFootprintPct}%` }}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button

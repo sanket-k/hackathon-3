@@ -268,16 +268,18 @@ JS_HEALTH_PROMPTS=$(cat <<'JS'
 try {
   const h = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
   if (!Array.isArray(h.prompts)) {
-    throw new Error('/api/health does not publish the `prompts` catalog array (server.ts health handler omits it)');
+    throw new Error('/api/health does not publish the `prompts` catalog array');
   }
   if (h.prompts.length !== 3) {
     throw new Error('prompts.length=' + h.prompts.length + ' (expected exactly 3 prompt ids)');
   }
+  // The catalog may be plain string ids or {id, hash} objects.
+  const ids = h.prompts.map((p) => (typeof p === 'string' ? p : p && p.id));
   const want = ['contract.ocr@1', 'contract.audit@1', 'contract.qa@1'];
   for (const id of want) {
-    if (!h.prompts.includes(id)) throw new Error('prompts is missing ' + id);
+    if (!ids.includes(id)) throw new Error('prompts is missing ' + id);
   }
-  console.log('prompts[' + h.prompts.length + ']: ' + h.prompts.join(', '));
+  console.log('prompts[' + ids.length + ']: ' + ids.join(', '));
 } catch (e) {
   console.error('ASSERT: ' + (e && e.message ? e.message : e));
   process.exit(1);

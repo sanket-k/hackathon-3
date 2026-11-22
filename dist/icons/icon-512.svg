@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="LawLens AI">
+  <rect width="512" height="512" rx="112" ry="112" fill="#0037b0" />
+  <g transform="translate(85 75)">
+    <path
+      d="M171 21 310 75v107c0 80-57.5 137.5-139 160C89.5 319.5 32 262 32 182V75Z"
+      fill="#ffffff"
+      fill-opacity="0.16"
+      stroke="#ffffff"
+      stroke-width="27"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M101 182 152 232 246 139"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="32"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+</svg>
